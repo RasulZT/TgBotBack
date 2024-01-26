@@ -22,7 +22,7 @@ import users.urls
 import food.urls
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('azim/', admin.site.urls),
     path('auth/', include(my_auth.urls)),
     path('users/', include(users.urls)),
     path('food/', include('food.urls')),
