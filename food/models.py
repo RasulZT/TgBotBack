@@ -14,7 +14,7 @@ class Category(models.Model):
 
 
 class Modifier(models.Model):
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.IntegerField()
     currency = models.CharField(max_length=3)  # 'KZT'
     name = models.CharField(max_length=255)
     on_stop = models.BooleanField(default=False)
@@ -23,7 +23,7 @@ class Modifier(models.Model):
 
 
 class Addition(models.Model):
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.IntegerField()
     currency = models.CharField(max_length=3)  # 'KZT'
     name = models.CharField(max_length=255)
     on_stop = models.BooleanField(default=False)
@@ -41,7 +41,7 @@ class Product(models.Model):
     image_url = models.URLField()
     name = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    price = models.IntegerField(blank=True, null=True)
     currency = models.CharField(max_length=3)  # 'KZT'
     modifiers = models.ManyToManyField(Modifier, null=True, blank=True)
     additions = models.ManyToManyField(Addition, null=True, blank=True)
@@ -56,7 +56,8 @@ class OrderProduct(models.Model):
     active_modifier = models.ForeignKey(Modifier, on_delete=models.SET_NULL, null=True, blank=True)
     additions = models.ManyToManyField(Addition, blank=True)
     amount = models.PositiveIntegerField()
-    client_comment = models.TextField()
+    client_comment = models.TextField(blank=True)
+    price = models.IntegerField(blank=True)
 
     def __str__(self):
         return f"{self.product_id} - {self.amount}"

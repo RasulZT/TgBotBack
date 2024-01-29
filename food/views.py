@@ -5,7 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
-
+from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -135,12 +135,31 @@ class OrderListAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = OrderSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        print(request.data['products'])
+        order_serializer = OrderSerializer(data=request.data)
+        if not order_serializer.is_valid(): return Response(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        order_instance = order_serializer.save()
+        order_id = order_instance.id
 
+        # Создаем OrderProduct для каждого продукта в списке
+        products_data = request.data.get('products', [])
+
+        for product_data in products_data:
+            product_serializer = OrderProductSerializer(data=product_data)
+            if product_serializer.is_valid():
+                productorder_instance= product_serializer.save()
+                orderproduct_id=productorder_instance.id
+                print("HAHAH")
+
+                print(order_id,orderproduct_id)
+                with connection.cursor() as cursor:
+                    sql_query = "INSERT INTO food_order_products (order_id, orderproduct_id) VALUES (%s, %s)"
+                    cursor.execute(sql_query, [order_id, orderproduct_id])
+            else:
+                # Если данные продукта некорректны, возвращаем ошибку
+                return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(order_serializer.data, status=status.HTTP_201_CREATED)
 
 class OrderDetailAPIView(APIView):
     permission_classes = [AllowAny]
