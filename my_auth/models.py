@@ -4,42 +4,67 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
 from rest_framework import permissions
-
-
-
+from loyalty.models import Action, Promos
 from django.db import models
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 
-class CustomToken(models.Model):
-    key = models.CharField(max_length=40, unique=True,primary_key=True)
-    name = models.CharField(max_length=255)
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, chat_id, full_name, promo, **extra_fields):
+        if not chat_id:
+            raise ValueError('The Chat ID must be set')
+        user = self.model(
+            chat_id=chat_id,
+            full_name=full_name,
+            promo=promo,
+            **extra_fields
+        )
+        user.set_unusable_password()
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, chat_id, full_name, promo, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(chat_id, full_name, promo, **extra_fields)
+
+
+class CustomUser(AbstractBaseUser):
+    telegram_id = models.IntegerField(unique=True)
+    telegram_fullname = models.CharField(max_length=255)
+    phone = models.CharField(max_length=20, blank=True)
+    kaspi_phone = models.CharField(max_length=20, blank=True)
+    address = models.JSONField(blank=True,null=True)
+    exact_address = models.CharField(max_length=255, null=True,blank=True)
+    bonus = models.IntegerField(default=1000)
+    role = models.CharField(max_length=10, choices=[('manager', 'Manager'), ('client', 'Client'), ('admin', 'Admin'),
+                                                    ('delivery', 'Delivery')], default='Client')
+    promo = models.OneToOneField(Promos, on_delete=models.SET_NULL, null=True, blank=True)
+    blocked = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    activeActions = models.ManyToManyField(Action, related_name='active_users',blank=True)
+    USERNAME_FIELD = 'telegram_id'
+    REQUIRED_FIELDS = ['telegram_fullname']
+
+    objects = CustomUserManager()
+
     def __str__(self):
-        return f"{self.key}"
+        return self.telegram_fullname
 
-class User(AbstractUser):
-    class Role(models.TextChoices):
-        CLIENT = 'Client'
-        DELIVERY = 'Delivery'
-        MANAGER = 'Manager'
-        COMPANY_ADMIN = 'CompanyAdmin'
-        ADMIN = 'Admin'
 
-    username = models.EmailField(unique=True, null=True)
-    password = models.CharField(max_length=200)
-    name = models.CharField(max_length=200)
-    role = models.CharField(max_length=200, choices=Role.choices, default=Role.CLIENT)
-    is_client = models.BooleanField(default=False)  # Флаг для обозначения клиентов
-    is_company_admin = models.BooleanField(default=False)  # Флаг для обозначения админов компании
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = []
+class UserToken(models.Model):
+    telegram_id = models.IntegerField()
+    access_token = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
 
-@receiver(post_save, sender=User)
-def create_auth_token(sender, instance=None, created=False, **kwargs):
-    if created:
-        Token.objects.create(user=instance)
-
-class IsManager(permissions.BasePermission):
-    def has_permission(self, request, view):
-        # Проверяем, что пользователь авторизован и имеет роль "менеджер"
-        return request.user.is_authenticated and request.user.role == User.Role.MANAGER
+    def __str__(self):
+        return f"{self.telegram_id} - {self.created_at} - {self.access_token}"

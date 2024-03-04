@@ -228,3 +228,12 @@ class OrderProductDetailAPIView(APIView):
         order_product = self.get_object(pk)
         order_product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+class OrderWithActionsAPIView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, order_id, format=None):
+        try:
+            order = Order.objects.get(id=order_id)
+            serializer = OrderSerializer(order)
+            return Response(serializer.data)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)

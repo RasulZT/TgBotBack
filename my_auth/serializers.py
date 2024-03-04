@@ -1,28 +1,17 @@
 from rest_framework import serializers
 
-from .models import User
+from .models import CustomUser, UserToken
 
 
-class UserSerializer(serializers.ModelSerializer):
+class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = '__all__'
-        extra_kwargs = {
-            'password': {'write_only': True}
-        }
+        model = CustomUser
+        fields = ['telegram_id', 'telegram_fullname', 'phone', 'promo', 'address', 'exact_address', 'bonus', 'role', 'blocked', 'updated_at', 'created_at']
 
     def create(self, validated_data):
-        password = validated_data.pop('password', None)
-        instance = self.Meta.model(**validated_data)
-        if password is not None:
-            instance.set_password(password)
-        instance.save()
-        return instance
-
-
-from .models import CustomToken
-
-class CustomTokenSerializer(serializers.ModelSerializer):
+        validated_data['role'] = 'client'  # устанавливаем роль по умолчанию
+        return super().create(validated_data)
+class UserTokenSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CustomToken
-        fields = ['name','key']
+        model = UserToken
+        fields = ['telegram_id', 'access_token', 'refresh_token', 'created_at']

@@ -2,8 +2,10 @@ from django.db import models
 
 from django.db import models
 
-from users.models import Client
 from django.contrib.postgres.fields import ArrayField
+
+from loyalty.models import Action
+
 
 
 class Category(models.Model):
@@ -89,12 +91,16 @@ class Order(models.Model):
     lat = models.FloatField()
     exact_address = models.CharField(max_length=255, null=True, blank=True)
     phone = models.CharField(max_length=20)
-    # actions = models.ManyToManyField(OrderAction, blank=True)
+    actions = models.ManyToManyField(Action, blank=True,null=True)
     products = models.ManyToManyField(OrderProduct)
     client_comment = models.TextField(null=True, blank=True)
+    from service.models import CompanySpots
+    company_id = models.ForeignKey(CompanySpots, on_delete=models.SET_NULL, null=True, blank=True)
+    done_time = models.TimeField(null=True, blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Order {self.id} - {self.status}"
+

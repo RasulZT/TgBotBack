@@ -18,12 +18,13 @@ from django.contrib import admin
 from django.urls import path, include
 
 import my_auth.urls
-import users.urls
-import food.urls
+import food.urls,loyalty.urls,service.urls
+
 
 urlpatterns = [
     path('azim/', admin.site.urls),
     path('auth/', include(my_auth.urls)),
-    path('users/', include(users.urls)),
     path('food/', include('food.urls')),
+    path('loy/', include('loyalty.urls')),
+    path('service/', include('service.urls'))
 ]

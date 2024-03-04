@@ -9,5 +9,6 @@ urlpatterns = [
     path('orders/', OrderListAPIView.as_view(), name='order-list'),
     path('orders/<int:pk>/', OrderDetailAPIView.as_view(), name='order-detail'),
     path('order-products/', OrderProductListAPIView.as_view(), name='order-product-list'),
-    path('order-products/<int:pk>/', OrderProductDetailAPIView.as_view(), name='order-product-detail')
+    path('order-products/<int:pk>/', OrderProductDetailAPIView.as_view(), name='order-product-detail'),
+    path('order/<int:order_id>/', OrderWithActionsAPIView.as_view(), name='order-with-actions')
 ]
