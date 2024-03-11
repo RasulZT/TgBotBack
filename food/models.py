@@ -5,7 +5,7 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
 from loyalty.models import Action
-
+from my_auth.models import CustomUser
 
 
 class Category(models.Model):
@@ -34,8 +34,8 @@ class Addition(models.Model):
 
 
 class Tag(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-    tag_color = models.CharField(max_length=7, unique=True)  # Assuming hex color code, e.g., '#RRGGBB'
+    name = models.CharField(max_length=255)
+    tag_color = models.CharField(max_length=7)  # Assuming hex color code, e.g., '#RRGGBB'
 
 
 class Product(models.Model):
@@ -83,11 +83,12 @@ class Order(models.Model):
     ]
 
     id = models.AutoField(primary_key=True)
-    client_id = models.IntegerField()  # Assuming telegram_id is an integer
-    status = models.CharField(max_length=20, choices=ORDER_STATUSES, default=PAYMENT_AWAIT)
+    client_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='client_orders')
+    delivery_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='delivery_orders')
+    status = models.CharField(max_length=20, choices=ORDER_STATUSES, default=MANAGER_AWAIT)
     bonus_used = models.BooleanField(default=False)
     user_name = models.CharField(max_length=255)
-    loc = models.FloatField()
+    long = models.FloatField()
     lat = models.FloatField()
     exact_address = models.CharField(max_length=255, null=True, blank=True)
     phone = models.CharField(max_length=20)

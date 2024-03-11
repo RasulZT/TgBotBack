@@ -10,5 +10,11 @@ urlpatterns = [
     path('orders/<int:pk>/', OrderDetailAPIView.as_view(), name='order-detail'),
     path('order-products/', OrderProductListAPIView.as_view(), name='order-product-list'),
     path('order-products/<int:pk>/', OrderProductDetailAPIView.as_view(), name='order-product-detail'),
-    path('order/<int:order_id>/', OrderWithActionsAPIView.as_view(), name='order-with-actions')
+    path('order/<int:order_id>/', OrderWithActionsAPIView.as_view(), name='order-with-actions'),
+    path('modifiers/', ModifierListCreateAPIView.as_view(), name='modifier-list'),
+    path('modifiers/<int:pk>/', ModifierRetrieveUpdateDestroyAPIView.as_view(), name='modifier-detail'),
+    path('additions/', AdditionListAPIView.as_view(), name='addition-list'),
+    path('additions/<int:pk>/', AdditionDetailAPIView.as_view(), name='addition-detail'),
+    path('tags/', TagListAPIView.as_view(), name='tag-list'),
+    path('tags/<int:pk>/', TagDetailAPIView.as_view(), name='tag-detail'),
 ]

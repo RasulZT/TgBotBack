@@ -14,6 +14,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import _locale
+
 _locale._getdefaultlocale = (lambda *args: ['en_US', 'utf8'])
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -172,4 +173,5 @@ AUTH_USER_MODEL = 'auth.User'
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=7),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'USER_ID_FIELD': 'telegram_id',
 }
