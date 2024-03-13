@@ -95,6 +95,7 @@ from .models import Order, OrderProduct
 
 
 class OrderProductSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(source='product_id')
     class Meta:
         model = OrderProduct
         fields = '__all__'
