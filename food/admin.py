@@ -36,7 +36,7 @@ admin.site.register(Tag, TagAdmin)
 
 
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ['id', 'category_id', 'image_url', 'name', 'description', 'price', 'currency', 'on_stop',
+    list_display = ['id', 'category_id', 'image', 'name', 'description', 'price', 'currency', 'on_stop',
                     'updated_at', 'created_at']
 
 

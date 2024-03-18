@@ -40,7 +40,7 @@ class Tag(models.Model):
 
 class Product(models.Model):
     category_id = models.ForeignKey(Category, on_delete=models.CASCADE)
-    image_url = models.URLField()
+    image = models.ImageField(upload_to='images/')
     name = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
     price = models.IntegerField(blank=True, null=True)
@@ -84,16 +84,15 @@ class Order(models.Model):
 
     id = models.AutoField(primary_key=True)
     client_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='client_orders')
-    delivery_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='delivery_orders')
+    delivery_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='delivery_orders',blank=True,null=True)
     status = models.CharField(max_length=20, choices=ORDER_STATUSES, default=MANAGER_AWAIT)
     bonus_used = models.BooleanField(default=False)
     user_name = models.CharField(max_length=255)
-    long = models.FloatField()
-    lat = models.FloatField()
+    address=models.JSONField( blank=True)
     exact_address = models.CharField(max_length=255, null=True, blank=True)
     phone = models.CharField(max_length=20)
     actions = models.ManyToManyField(Action, blank=True,null=True)
-    products = models.ManyToManyField(OrderProduct)
+    products = models.ManyToManyField(OrderProduct,blank=True)
     client_comment = models.TextField(null=True, blank=True)
     from service.models import CompanySpots
     company_id = models.ForeignKey(CompanySpots, on_delete=models.SET_NULL, null=True, blank=True)

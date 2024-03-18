@@ -19,7 +19,8 @@ from django.urls import path, include
 
 import my_auth.urls
 import food.urls,loyalty.urls,service.urls
-
+from django.conf.urls.static import static
+from django.conf import settings
 
 urlpatterns = [
     path('azim/', admin.site.urls),
@@ -27,4 +28,4 @@ urlpatterns = [
     path('food/', include('food.urls')),
     path('loy/', include('loyalty.urls')),
     path('service/', include('service.urls'))
-]
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

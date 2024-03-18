@@ -90,7 +90,7 @@ DATABASES = {
         'NAME': 'new',
         'USER': 'postgres',
         'PASSWORD': 'rasul2004',
-        'HOST': 'db',
+        'HOST': 'localhost',
         'PORT': 5432,
     }
 }
@@ -175,3 +175,4 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
     'USER_ID_FIELD': 'telegram_id',
 }
+
