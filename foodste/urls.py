@@ -21,11 +21,12 @@ import my_auth.urls
 import food.urls,loyalty.urls,service.urls
 from django.conf.urls.static import static
 from django.conf import settings
-
+from .views import get_image
 urlpatterns = [
     path('azim/', admin.site.urls),
     path('auth/', include(my_auth.urls)),
     path('food/', include('food.urls')),
     path('loy/', include('loyalty.urls')),
-    path('service/', include('service.urls'))
-]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path('service/', include('service.urls')),
+    path('media/images/<str:image_name>/', get_image, name='get_image'),
+]

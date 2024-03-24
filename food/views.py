@@ -9,6 +9,8 @@ from django.db import connection
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+
+from my_auth.models import CustomUser
 from .models import Category, Product, OrderProduct, Order, Modifier, Addition, Tag
 from .serializers import CategorySerializer, ProductSerializer, OrderProductSerializer, OrderSerializer, \
     ModifierSerializer, AdditionSerializer, TagSerializer
@@ -143,6 +145,21 @@ class OrderListAPIView(APIView):
         order_instance = order_serializer.save()
         order_id = order_instance.id
 
+        kaspi_phone = request.data.get('kaspi_phone')
+        address = request.data.get('address')
+        client_id = request.data.get('client_id')
+
+        try:
+            custom_user = CustomUser.objects.get(pk=client_id)
+        except CustomUser.DoesNotExist:
+            custom_user = CustomUser.objects.create(pk=client_id)
+
+            # Обновляем поля в экземпляре CustomUser
+        custom_user.kaspi_phone = kaspi_phone
+        custom_user.address = address
+
+        # Сохраняем экземпляр CustomUser
+        custom_user.save()
         # Создаем OrderProduct для каждого продукта в списке
         products_data = request.data.get('products', [])
 

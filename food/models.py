@@ -40,7 +40,7 @@ class Tag(models.Model):
 
 class Product(models.Model):
     category_id = models.ForeignKey(Category, on_delete=models.CASCADE)
-    image = models.ImageField(upload_to='images/')
+    image_url = models.CharField(max_length=255)
     name = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
     price = models.IntegerField(blank=True, null=True)
@@ -91,13 +91,15 @@ class Order(models.Model):
     address=models.JSONField( blank=True)
     exact_address = models.CharField(max_length=255, null=True, blank=True)
     phone = models.CharField(max_length=20)
+    kaspi_phone = models.CharField(max_length=20, blank=True)
     actions = models.ManyToManyField(Action, blank=True,null=True)
     products = models.ManyToManyField(OrderProduct,blank=True)
     client_comment = models.TextField(null=True, blank=True)
     from service.models import CompanySpots
     company_id = models.ForeignKey(CompanySpots, on_delete=models.SET_NULL, null=True, blank=True)
     done_time = models.TimeField(null=True, blank=True)
-
+    bonus_amount = models.IntegerField(default=0,blank=True,null=True)  # Количество бонусов
+    delivery_price = models.DecimalField(max_digits=10, decimal_places=2, default=0,blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
