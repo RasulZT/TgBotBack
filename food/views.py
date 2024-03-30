@@ -133,6 +133,7 @@ class ProductDetailView(APIView):
 
 class OrderListAPIView(APIView):
     permission_classes = [AllowAny]
+
     def get(self, request):
         orders = Order.objects.all()
         serializer = OrderSerializer(orders, many=True)
@@ -147,6 +148,8 @@ class OrderListAPIView(APIView):
 
         kaspi_phone = request.data.get('kaspi_phone')
         address = request.data.get('address')
+        exact_address = request.data.get('exact_address')
+        phone = request.data.get('phone')
         client_id = request.data.get('client_id')
 
         try:
@@ -156,7 +159,9 @@ class OrderListAPIView(APIView):
 
             # Обновляем поля в экземпляре CustomUser
         custom_user.kaspi_phone = kaspi_phone
+        custom_user.phone = phone
         custom_user.address = address
+        custom_user.exact_address = exact_address
 
         # Сохраняем экземпляр CustomUser
         custom_user.save()
@@ -166,11 +171,11 @@ class OrderListAPIView(APIView):
         for product_data in products_data:
             product_serializer = OrderProductSerializer(data=product_data)
             if product_serializer.is_valid():
-                productorder_instance= product_serializer.save()
-                orderproduct_id=productorder_instance.id
+                productorder_instance = product_serializer.save()
+                orderproduct_id = productorder_instance.id
                 print("HAHAH")
 
-                print(order_id,orderproduct_id)
+                print(order_id, orderproduct_id)
                 with connection.cursor() as cursor:
                     sql_query = "INSERT INTO food_order_products (order_id, orderproduct_id) VALUES (%s, %s)"
                     cursor.execute(sql_query, [order_id, orderproduct_id])
@@ -180,8 +185,10 @@ class OrderListAPIView(APIView):
 
         return Response(order_serializer.data, status=status.HTTP_201_CREATED)
 
+
 class OrderDetailAPIView(APIView):
     permission_classes = [AllowAny]
+
     def get_object(self, pk):
         try:
             return Order.objects.get(pk=pk)
@@ -209,6 +216,7 @@ class OrderDetailAPIView(APIView):
 
 class OrderProductListAPIView(APIView):
     permission_classes = [AllowAny]
+
     def get(self, request):
         order_products = OrderProduct.objects.all()
         serializer = OrderProductSerializer(order_products, many=True)
@@ -224,6 +232,7 @@ class OrderProductListAPIView(APIView):
 
 class OrderProductDetailAPIView(APIView):
     permission_classes = [AllowAny]
+
     def get_object(self, pk):
         try:
             return OrderProduct.objects.get(pk=pk)
@@ -247,8 +256,11 @@ class OrderProductDetailAPIView(APIView):
         order_product = self.get_object(pk)
         order_product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class OrderWithActionsAPIView(APIView):
     permission_classes = [AllowAny]
+
     def get(self, request, order_id, format=None):
         try:
             order = Order.objects.get(id=order_id)
@@ -270,6 +282,7 @@ class ModifierListCreateAPIView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ModifierRetrieveUpdateDestroyAPIView(APIView):
     def get_object(self, pk):
@@ -295,6 +308,8 @@ class ModifierRetrieveUpdateDestroyAPIView(APIView):
         modifier = self.get_object(pk)
         modifier.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class AdditionListAPIView(APIView):
     def get(self, request):
         additions = Addition.objects.all()
@@ -307,6 +322,7 @@ class AdditionListAPIView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class AdditionDetailAPIView(APIView):
     def get_object(self, pk):
@@ -333,6 +349,7 @@ class AdditionDetailAPIView(APIView):
         addition.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class TagListAPIView(APIView):
     def get(self, request):
         tags = Tag.objects.all()
@@ -345,6 +362,7 @@ class TagListAPIView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class TagDetailAPIView(APIView):
     def get_object(self, pk):
