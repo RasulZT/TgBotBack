@@ -22,6 +22,8 @@ import food.urls,loyalty.urls,service.urls
 from django.conf.urls.static import static
 from django.conf import settings
 from .views import get_image
+import websocket.urls
+
 urlpatterns = [
     path('azim/', admin.site.urls),
     path('auth/', include(my_auth.urls)),
@@ -29,4 +31,5 @@ urlpatterns = [
     path('loy/', include('loyalty.urls')),
     path('service/', include('service.urls')),
     path('media/images/<str:image_name>/', get_image, name='get_image'),
+    path("ws/", include("websocket.urls")),
 ]

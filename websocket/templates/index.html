@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Orders Status</title>
+</head>
+<body>
+    <h1>Real-time Orders Status</h1>
+    <ul id="orders-list"></ul>
+
+    <script>
+        const ws = new WebSocket("ws://127.0.0.1:8000/ws/orders/");
+        const ordersList = document.getElementById("orders-list");
+
+        ws.onmessage = function(event) {
+            const order = JSON.parse(event.data);
+            console.log(order);
+            updateOrdersList(order);
+        };
+
+        function updateOrdersList(order) {
+            const existingListItem = document.getElementById(`order-${order.order_id}`);
+            if (existingListItem) {
+                // Если элемент уже существует, обновляем его данные
+                existingListItem.textContent = `Order ID: ${order.order_id}, Status: ${order.status}`;
+            } else {
+                // Если элемент не существует, создаем новый
+                const listItem = document.createElement("li");
+                listItem.textContent = `Order ID: ${order.order_id}, Status: ${order.status}`;
+                listItem.id = `order-${order.order_id}`;
+                ordersList.appendChild(listItem);
+            }
+        }
+    </script>
+</body>
+</html>

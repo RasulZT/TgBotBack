@@ -140,50 +140,50 @@ class OrderListAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        print(request.data['products'])
-        order_serializer = OrderSerializer(data=request.data)
-        if not order_serializer.is_valid(): return Response(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        order_instance = order_serializer.save()
-        order_id = order_instance.id
+        # Получаем данные запроса
+        request_data = request.data
 
-        kaspi_phone = request.data.get('kaspi_phone')
-        address = request.data.get('address')
-        exact_address = request.data.get('exact_address')
-        phone = request.data.get('phone')
-        client_id = request.data.get('client_id')
+        # Получаем данные о бонусах и другие данные
+        bonus_used = request_data.get('bonus_used', False)
+        bonus_amount = request_data.get('bonus_amount', 0)
+        client_id = request_data.get('client_id')
 
+        # Получаем или создаем экземпляр CustomUser
         try:
             custom_user = CustomUser.objects.get(pk=client_id)
         except CustomUser.DoesNotExist:
             custom_user = CustomUser.objects.create(pk=client_id)
 
-            # Обновляем поля в экземпляре CustomUser
-        custom_user.kaspi_phone = kaspi_phone
-        custom_user.phone = phone
-        custom_user.address = address
-        custom_user.exact_address = exact_address
+        # Проверяем, хватает ли у пользователя бонусов для совершения заказа
+        if bonus_used and custom_user.bonus < bonus_amount:
+            return Response(
+                {"error": f"У вас не хватает бонусов. Ваши бонусы: {custom_user.bonus}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # Сохраняем экземпляр CustomUser
-        custom_user.save()
-        # Создаем OrderProduct для каждого продукта в списке
-        products_data = request.data.get('products', [])
+        # Создаем и сохраняем заказ
+        order_serializer = OrderSerializer(data=request_data)
+        if order_serializer.is_valid():
+            order_instance = order_serializer.save()
 
-        for product_data in products_data:
-            product_serializer = OrderProductSerializer(data=product_data)
-            if product_serializer.is_valid():
-                productorder_instance = product_serializer.save()
-                orderproduct_id = productorder_instance.id
-                print("HAHAH")
+            # Обновляем поля экземпляра CustomUser
+            custom_user.kaspi_phone = request_data.get('kaspi_phone')
+            custom_user.phone = request_data.get('phone')
+            custom_user.address = request_data.get('address')
+            custom_user.exact_address = request_data.get('exact_address')
+            custom_user.save()
 
-                print(order_id, orderproduct_id)
-                with connection.cursor() as cursor:
-                    sql_query = "INSERT INTO food_order_products (order_id, orderproduct_id) VALUES (%s, %s)"
-                    cursor.execute(sql_query, [order_id, orderproduct_id])
-            else:
-                # Если данные продукта некорректны, возвращаем ошибку
-                return Response(product_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # Создаем и сохраняем OrderProduct для каждого продукта в списке
+            products_data = request_data.get('products', [])
+            for product_data in products_data:
+                product_serializer = OrderProductSerializer(data=product_data)
+                if product_serializer.is_valid():
+                    product_instance = product_serializer.save()
+                    order_instance.products.add(product_instance)
 
-        return Response(order_serializer.data, status=status.HTTP_201_CREATED)
+            return Response(order_serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(order_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class OrderDetailAPIView(APIView):
@@ -204,6 +204,18 @@ class OrderDetailAPIView(APIView):
         order = self.get_object(pk)
         serializer = OrderSerializer(order, data=request.data)
         if serializer.is_valid():
+            status_value = request.data.get('status', None)
+            if status_value == 'inactive':
+                client_id = request.data.get('client_id')
+                try:
+                    custom_user = CustomUser.objects.get(pk=client_id)
+                except CustomUser.DoesNotExist:
+                    custom_user = CustomUser.objects.create(pk=client_id)
+                if custom_user:
+                    print("HA",custom_user.bonus)
+                    custom_user.bonus += 2000
+                    custom_user.save()
+
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

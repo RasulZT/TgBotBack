@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Orders</title>
+</head>
+<body>
+    <h1>New Orders</h1>
+    <ul id="new-orders-list"></ul>
+
+    <script>
+        const ws = new WebSocket("ws://127.0.0.1:8000/ws/new_orders/");  // Замените на ваш IP и порт
+        const newOrdersList = document.getElementById("new-orders-list");
+
+        ws.onmessage = function(event) {
+            const orderData = JSON.parse(event.data);
+            console.log(orderData.order_data)
+            addNewOrder(orderData.order_data);
+        };
+
+        function addNewOrder(orderData) {
+            const listItem = document.createElement("li");
+            listItem.textContent = `Order ID: ${orderData.order_id}, Client ID: ${orderData.client_id}, Status: ${orderData.status}`;
+            newOrdersList.appendChild(listItem);
+        }
+    </script>
+</body>
+</html>
