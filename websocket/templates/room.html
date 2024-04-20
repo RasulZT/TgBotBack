@@ -10,7 +10,7 @@
     <ul id="new-orders-list"></ul>
 
     <script>
-        const ws = new WebSocket("ws://127.0.0.1:8000/ws/new_orders/");  // Замените на ваш IP и порт
+        const ws = new WebSocket("ws://185.129.49.54:8001/ws/new_orders/");  // Замените на ваш IP и порт
         const newOrdersList = document.getElementById("new-orders-list");
 
         ws.onmessage = function(event) {

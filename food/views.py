@@ -1,3 +1,5 @@
+import json
+
 from django.shortcuts import render
 
 # Create your views here.
@@ -16,7 +18,6 @@ from .serializers import CategorySerializer, ProductSerializer, OrderProductSeri
     ModifierSerializer, AdditionSerializer, TagSerializer
 
 from django.http import Http404
-
 
 class GetAllCategoriesView(APIView):
     permission_classes = [AllowAny]
@@ -131,6 +132,8 @@ class ProductDetailView(APIView):
         return Response({"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
+
+
 class OrderListAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -171,8 +174,15 @@ class OrderListAPIView(APIView):
             custom_user.phone = request_data.get('phone')
             custom_user.address = request_data.get('address')
             custom_user.exact_address = request_data.get('exact_address')
+            custom_user.bonus -= bonus_amount
             custom_user.save()
+            print(json.dumps(request_data.get('address'),ensure_ascii=False))
 
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO addresses (user_id, address, creation_date) VALUES (%s, %s, CURRENT_TIMESTAMP)",
+                    [client_id, json.dumps(request_data.get('address'),ensure_ascii=False)]
+                )
             # Создаем и сохраняем OrderProduct для каждого продукта в списке
             products_data = request_data.get('products', [])
             for product_data in products_data:
@@ -202,6 +212,10 @@ class OrderDetailAPIView(APIView):
 
     def put(self, request, pk):
         order = self.get_object(pk)
+        sum_price=0
+        for i in list(order.products.values()):
+            product = Product.objects.get(id=i['product_id_id'])
+            sum_price+=product.price
         serializer = OrderSerializer(order, data=request.data)
         if serializer.is_valid():
             status_value = request.data.get('status', None)
@@ -212,8 +226,8 @@ class OrderDetailAPIView(APIView):
                 except CustomUser.DoesNotExist:
                     custom_user = CustomUser.objects.create(pk=client_id)
                 if custom_user:
-                    print("HA",custom_user.bonus)
-                    custom_user.bonus += 2000
+                    print("HA", custom_user.bonus)
+                    custom_user.bonus += int(sum_price*5/100)
                     custom_user.save()
 
             serializer.save()

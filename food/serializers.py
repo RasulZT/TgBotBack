@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Modifier, Addition, Tag, Product
+from .models import Category, Modifier, Addition, Tag, Product, Company
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -107,3 +107,8 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
+
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = ['id', 'name', 'description', 'link', 'contact_info', 'updated_at', 'created_at']

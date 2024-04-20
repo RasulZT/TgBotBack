@@ -10,7 +10,7 @@
     <ul id="orders-list"></ul>
 
     <script>
-        const ws = new WebSocket("ws://127.0.0.1:8000/ws/orders/");
+        const ws = new WebSocket("ws://185.129.49.54:8001/ws/orders/");
         const ordersList = document.getElementById("orders-list");
 
         ws.onmessage = function(event) {

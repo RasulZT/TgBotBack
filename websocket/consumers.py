@@ -14,6 +14,8 @@ class OrderConsumer(WebsocketConsumer):
         orders = Order.objects.all()
         for order in orders:
             self.send_order_info(order)
+    def receive(self, text_data):
+        pass  # не требуется обработка сообщений от клиента
 
     def disconnect(self, close_code):
         async_to_sync(self.channel_layer.group_discard)(self.group_name, self.channel_name)
@@ -55,3 +57,5 @@ class NewOrderConsumer(WebsocketConsumer):
             'type': 'new_order',
             'order_data': order_data,
         }, cls=DjangoJSONEncoder))  # Используем DjangoJSONEncoder для сериализации объектов Django
+
+

@@ -32,7 +32,7 @@ for feature in data['features']:
     coordinates_json = json.dumps(coordinates)
 
     # Формирование SQL-запроса для вставки данных
-    sql = "INSERT INTO map2 (id, housenumber, street, building, levels, roof_shape, coordinates) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+    sql = "INSERT INTO map (id, housenumber, street, building, levels, roof_shape, coordinates) VALUES (%s, %s, %s, %s, %s, %s, %s)"
     try:
         cur.execute(sql, (
             properties['@id'],
