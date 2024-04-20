@@ -19,6 +19,7 @@ from .serializers import CategorySerializer, ProductSerializer, OrderProductSeri
 
 from django.http import Http404
 
+
 class GetAllCategoriesView(APIView):
     permission_classes = [AllowAny]
 

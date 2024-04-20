@@ -1,4 +1,5 @@
 from django.db import models
+from food.models import Product
 from my_auth.models import CustomUser
 from food.models import Product
 
@@ -20,7 +21,3 @@ class CompanySpots(models.Model):
     additions_on_stop = models.ManyToManyField(Addition,blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
-
-
-
