@@ -17,4 +17,5 @@ urlpatterns = [
     path('additions/<int:pk>/', AdditionDetailAPIView.as_view(), name='addition-detail'),
     path('tags/', TagListAPIView.as_view(), name='tag-list'),
     path('tags/<int:pk>/', TagDetailAPIView.as_view(), name='tag-detail'),
+    path('filter_orders/', OrderFilterListAPIView.as_view(), name='order-list'),
 ]

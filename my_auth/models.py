@@ -38,8 +38,8 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractBaseUser):
-    telegram_id = models.IntegerField(primary_key=True,unique=True)
-    telegram_fullname = models.CharField(max_length=255)
+    telegram_id = models.CharField(primary_key=True,unique=True)
+    telegram_fullname = models.CharField(max_length=255,blank=True)
     phone = models.CharField(max_length=20, blank=True)
     kaspi_phone = models.CharField(max_length=20, blank=True)
     address = models.JSONField(blank=True,null=True)

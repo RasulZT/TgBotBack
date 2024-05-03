@@ -1,11 +1,15 @@
+import pytz
+from datetime import datetime, time, timedelta
 import json
+from django.utils.timezone import make_aware
+from rest_framework import generics
 
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter
+from rest_framework.pagination import LimitOffsetPagination
 from django.shortcuts import render
 
 # Create your views here.
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 from rest_framework.permissions import AllowAny
 from django.db import connection
 from rest_framework.views import APIView
@@ -133,8 +137,6 @@ class ProductDetailView(APIView):
         return Response({"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
-
-
 class OrderListAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -177,12 +179,12 @@ class OrderListAPIView(APIView):
             custom_user.exact_address = request_data.get('exact_address')
             custom_user.bonus -= bonus_amount
             custom_user.save()
-            print(json.dumps(request_data.get('address'),ensure_ascii=False))
+            print(json.dumps(request_data.get('address'), ensure_ascii=False))
 
             with connection.cursor() as cursor:
                 cursor.execute(
                     "INSERT INTO addresses (user_id, address, creation_date) VALUES (%s, %s, CURRENT_TIMESTAMP)",
-                    [client_id, json.dumps(request_data.get('address'),ensure_ascii=False)]
+                    [client_id, json.dumps(request_data.get('address'), ensure_ascii=False)]
                 )
             # Создаем и сохраняем OrderProduct для каждого продукта в списке
             products_data = request_data.get('products', [])
@@ -213,10 +215,10 @@ class OrderDetailAPIView(APIView):
 
     def put(self, request, pk):
         order = self.get_object(pk)
-        sum_price=0
+        sum_price = 0
         for i in list(order.products.values()):
             product = Product.objects.get(id=i['product_id_id'])
-            sum_price+=product.price
+            sum_price += product.price
         serializer = OrderSerializer(order, data=request.data)
         if serializer.is_valid():
             status_value = request.data.get('status', None)
@@ -228,7 +230,7 @@ class OrderDetailAPIView(APIView):
                     custom_user = CustomUser.objects.create(pk=client_id)
                 if custom_user:
                     print("HA", custom_user.bonus)
-                    custom_user.bonus += int(sum_price*5/100)
+                    custom_user.bonus += int(sum_price * 5 / 100)
                     custom_user.save()
 
             serializer.save()
@@ -415,3 +417,33 @@ class TagDetailAPIView(APIView):
         tag = self.get_object(pk)
         tag.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OrderFilterListAPIView(generics.ListAPIView):
+    permission_classes = [AllowAny]
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ['client_id', 'company_id', 'status']
+    ordering_fields = ['created_at']
+    pagination_class = LimitOffsetPagination
+
+    def get_queryset(self):
+        start_time_str = self.request.query_params.get('start_time')
+        end_time_str = self.request.query_params.get('end_time')
+
+        if start_time_str and end_time_str:
+            # Парсинг времени из строки
+            start_time = datetime.strptime(start_time_str, '%H:%M').time()
+            end_time = datetime.strptime(end_time_str, '%H:%M').time()
+
+            # Отнять 5 часов
+            start_time_utc = datetime.combine(datetime.today(), start_time) - timedelta(hours=5)
+            end_time_utc = datetime.combine(datetime.today(), end_time) - timedelta(hours=5)
+
+            # Фильтрация по времени в UTC
+            queryset = Order.objects.filter(created_at__time__range=(start_time_utc.time(), end_time_utc.time()))
+        else:
+            queryset = Order.objects.all()
+
+        return queryset
