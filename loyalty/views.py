@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
+from food.models import Product
 from my_auth.authentication import CustomTokenAuthentication
 from my_auth.permissions import IsLogined
 from rest_framework.permissions import AllowAny
@@ -97,3 +98,36 @@ class PromosAPIView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AnalyzeOrderView(APIView):
+    permission_classes = [AllowAny]
+
+    def check_free_pizza_three_action(self):
+        free_pizza_action = Action.objects.filter(triggers__short_name="free_pizza_three").first()
+        return free_pizza_action
+    def post(self, request, *args, **kwargs):
+        order_data = request.data
+        category_count = {}
+
+        # Итерация по продуктам заказа для подсчета количества продуктов в каждой категории
+        for item in order_data['products']:
+            product_id = item['product']
+            product = Product.objects.get(id=product_id)
+            category = product.category.name
+
+            # Увеличение количества продуктов в категории
+            category_count[category] = category_count.get(category, 0) + 1
+
+        for category, count in category_count.items():
+            if(category=="Пицца") and count==3:
+                action = self.check_free_pizza_three_action()
+                order_data['action'] = {
+                    'id': action.id,
+                }
+                return Response(order_data, status=status.HTTP_200_OK)
+            else:
+                return Response({'message': 'Акция не найдена'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(order_data, status=status.HTTP_200_OK)
+

@@ -14,7 +14,7 @@ from django.dispatch import receiver
 #     # Меняем статус заказа
 #     new_status = request.POST.get('new_status')
 #     order.status = new_status
-#     order.save()
+#     order.save()dw
 #
 #     # Отправляем сообщение о обновлении статуса заказа через WebSocket
 #     channel_layer = get_channel_layer()

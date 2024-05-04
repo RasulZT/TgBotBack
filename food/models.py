@@ -44,6 +44,7 @@ class Company(models.Model):
     contact_info = models.CharField(max_length=255)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    spots = models.ManyToManyField('service.CompanySpots', related_name='companies')
 
 
 class Product(models.Model):
@@ -81,6 +82,7 @@ class Order(models.Model):
     DONE = 'done'
     ON_DELIVERY = 'on_delivery'
     INACTIVE = 'inactive'
+    REJECTED='rejected'
 
     ORDER_STATUSES = [
         (PAYMENT_AWAIT, 'Payment Await'),
@@ -89,6 +91,7 @@ class Order(models.Model):
         (DONE, 'Done'),
         (ON_DELIVERY, 'On Delivery'),
         (INACTIVE, 'Inactive'),
+        (REJECTED,'Rejected')
     ]
     RATING_CHOICES = [(i, str(i)) for i in range(5)]  # Выбор оценки от 0 до 4
     id = models.AutoField(primary_key=True)
@@ -104,6 +107,7 @@ class Order(models.Model):
     actions = models.ManyToManyField(Action, blank=True,null=True)
     products = models.ManyToManyField(OrderProduct,blank=True)
     rating = models.IntegerField(choices=RATING_CHOICES, null=True, blank=True)
+    rejected_text=models.TextField(null=True, blank=True)
     client_comment = models.TextField(null=True, blank=True)
     from service.models import CompanySpots
     company_id = models.ForeignKey(CompanySpots, on_delete=models.SET_NULL, null=True, blank=True)

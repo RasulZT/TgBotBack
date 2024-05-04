@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ActionListView, ActionDetailView, TriggerListView, PayloadListView, PromosAPIView
+from .views import ActionListView, ActionDetailView, TriggerListView, PayloadListView, PromosAPIView, AnalyzeOrderView
 
 urlpatterns = [
     path('actions/', ActionListView.as_view(), name='action-list'),
@@ -7,4 +7,5 @@ urlpatterns = [
     path('triggers/', TriggerListView.as_view(), name='trigger-list'),
     path('payloads/', PayloadListView.as_view(), name='payload-list'),
     path('promos/', PromosAPIView.as_view(), name='promos-list'),
+    path('analyze-order/', AnalyzeOrderView.as_view(), name='analyze_order'),
 ]

@@ -22,21 +22,36 @@ class OrderConsumer(WebsocketConsumer):
 
     def send_order_info(self, order):
         # Отправляем информацию о заказе клиенту через WebSocket
+        if order.delivery_id:
+            tg_id=order.delivery_id.telegram_id
+        else:
+            tg_id=0
         self.send(text_data=json.dumps({
             'type': 'order_info',
             'order_id': order.id,
             'status': order.status,
+            'delivery_id':tg_id,
             # Добавьте другие поля здесь при необходимости
         }))
 
     def order_update(self, event):
+        print(event)
         order_id = event['order_id']
         status = event['status']
+        order=Order.objects.get(id=order_id)
+        if order.delivery_id:
+            delivery_id=order.delivery_id.telegram_id
+        else:
+            delivery_id = 0
+        rejected_text=order.rejected_text
         # Обновляем данные заказа на вашей HTML-странице
         self.send(text_data=json.dumps({
             'type': 'order_update',
             'order_id': order_id,
             'status': status,
+            'delivery_id': delivery_id,
+            'rejected_text':rejected_text
+
             # Добавьте другие поля здесь при необходимости
         }))
 class NewOrderConsumer(WebsocketConsumer):

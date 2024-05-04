@@ -134,8 +134,19 @@ def get_addresses(request):
         # Разделение строки запроса на улицу и номер дома
         search_parts = search_string.split()
         if len(search_parts) == 2:
+            housenumber=""
             street = search_parts[0]
-            housenumber = search_parts[1]
+            s=search_parts[1]
+            if(s.isdigit()):
+                housenumber = search_parts[1]
+            else:
+                street+= " " + search_parts[1]
+            print(street)
+
+        elif len(search_parts)==3:
+            street=search_parts[0] + " " + search_parts[1]
+            print(street)
+            housenumber=search_parts[2]
         else:
             street = search_string
             housenumber = None  # Если номер дома не указан в запросе
@@ -149,9 +160,9 @@ def get_addresses(request):
                            m.roof_shape,
                            m.coordinates
                     FROM map AS m
-                    WHERE LOWER(m.street) LIKE %s AND m.housenumber = %s
-                    limit 20
-                """, ['%' + street + '%', housenumber])
+                   WHERE similarity(m.street, %s) > 0.3 AND m.housenumber = %s
+                    LIMIT 20
+                """, [street, housenumber])
             else:
                 cursor.execute("""
                     SELECT CONCAT(m.street, ' ', m.housenumber) AS address,
@@ -160,9 +171,9 @@ def get_addresses(request):
                            m.roof_shape,
                            m.coordinates
                     FROM map AS m
-                    WHERE LOWER(m.street) LIKE %s
-                    limit 20
-                """, ['%' + street + '%'])
+                    WHERE similarity(m.street, %s) > 0.3
+                    LIMIT 20
+                """, [street])
 
             rows = cursor.fetchall()  # Получаем все строки из результата запроса
             addresses = []
@@ -224,9 +235,10 @@ def get_matching_coordinates(request):
 class AddressListView(APIView):
     permission_classes = [AllowAny]
     def get(self, request, user_id):
+        user_id=str(user_id)
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT address FROM Addresses WHERE user_id = %s",
+                "SELECT DISTINCT address FROM Addresses WHERE user_id = %s",
                 [user_id]
             )
             addresses = cursor.fetchall()

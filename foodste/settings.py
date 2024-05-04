@@ -91,7 +91,7 @@ WSGI_APPLICATION = 'foodste.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'new',
+        'NAME': 'new2',
         'USER': 'postgres',
         'PASSWORD': 'Aruka2004',
         'HOST': 'localhost',

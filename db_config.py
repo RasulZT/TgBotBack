@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 # Подключение к базе данных PostgreSQL
 conn = psycopg2.connect(
-    dbname="new",
+    dbname="new2",
     user="postgres",
     password="Aruka2004",
     host="localhost",
