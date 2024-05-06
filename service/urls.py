@@ -1,5 +1,6 @@
 from django.urls import path
-from .views import CompanySpotsAPIView, DeliveryLayersAPIView, DeliveryLayersDetailAPIView, CompanySpotsDetailAPIView,get_addresses,get_matching_coordinates,AddressListView
+from .views import CompanySpotsAPIView, DeliveryLayersAPIView, DeliveryLayersDetailAPIView, CompanySpotsDetailAPIView, \
+    get_addresses, get_matching_coordinates, AddressListView, create_reminder
 
 urlpatterns = [
     path('company_spots/', CompanySpotsAPIView.as_view(), name='company-spot-list'),
@@ -9,5 +10,6 @@ urlpatterns = [
     path('get_addresses/', get_addresses, name='get_addresses'),
     path('getby_coordinates/',get_matching_coordinates,name="get addr by coord"),
     path('addresses/<int:user_id>/', AddressListView.as_view(), name='address-list'),
+    path('create_reminder/', create_reminder, name='create_reminder'),
 
 ]

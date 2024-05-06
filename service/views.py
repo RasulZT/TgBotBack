@@ -8,7 +8,7 @@ from rest_framework import status
 
 from my_auth.models import CustomUser
 from my_auth.permissions import IsLogined
-from .models import DeliveryLayers, CompanySpots
+from .models import DeliveryLayers, CompanySpots, Reminder
 from .serializers import DeliveryLayersSerializer, CompanySpotsSerializer
 from rest_framework.permissions import AllowAny
 from django.http import Http404
@@ -134,11 +134,11 @@ def get_addresses(request):
         # Разделение строки запроса на улицу и номер дома
         search_parts = search_string.split()
         if len(search_parts) == 2:
-            housenumber=""
+            housenumber=None
             street = search_parts[0]
             s=search_parts[1]
             if(s.isdigit()):
-                housenumber = search_parts[1]
+                housenumber = search_parts[1] +'%'
             else:
                 street+= " " + search_parts[1]
             print(street)
@@ -146,7 +146,7 @@ def get_addresses(request):
         elif len(search_parts)==3:
             street=search_parts[0] + " " + search_parts[1]
             print(street)
-            housenumber=search_parts[2]
+            housenumber=search_parts[2] + '%'
         else:
             street = search_string
             housenumber = None  # Если номер дома не указан в запросе
@@ -160,7 +160,7 @@ def get_addresses(request):
                            m.roof_shape,
                            m.coordinates
                     FROM map AS m
-                   WHERE similarity(m.street, %s) > 0.3 AND m.housenumber = %s
+                   WHERE similarity(m.street, %s) > 0.3 AND m.housenumber LIKE %s
                     LIMIT 20
                 """, [street, housenumber])
             else:
@@ -250,3 +250,14 @@ class AddressListView(APIView):
 
         # Возвращаем JSON-ответ
         return JsonResponse(addresses_list, safe=False)
+
+@csrf_exempt
+def create_reminder(request):
+    if request.method == 'POST':
+        message = request.POST.get('message')
+        scheduled_time = request.POST.get('scheduled_time')
+        user = request.user  # предполагая, что аутентификация пользователя уже выполнена
+        reminder = Reminder.objects.create(user=user, message=message, scheduled_time=scheduled_time)
+        return JsonResponse({'status': 'success', 'reminder_id': reminder.id})
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Only POST requests are allowed'})

@@ -3,17 +3,18 @@ from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
 from food.models import Order
 from django.core.serializers.json import DjangoJSONEncoder
-
+from channels.layers import get_channel_layer
 class OrderConsumer(WebsocketConsumer):
     def connect(self):
         self.group_name = 'orders'
         async_to_sync(self.channel_layer.group_add)(self.group_name, self.channel_name)
         self.accept()
-
+        print(get_channel_layer().group_send)
         # Отправляем все существующие заказы при подключении клиента
         orders = Order.objects.all()
         for order in orders:
             self.send_order_info(order)
+
     def receive(self, text_data):
         pass  # не требуется обработка сообщений от клиента
 
@@ -54,6 +55,17 @@ class OrderConsumer(WebsocketConsumer):
 
             # Добавьте другие поля здесь при необходимости
         }))
+    def send_notification_to_user(self):
+        # print(event)
+        print("WS работает")
+        # message = event['message']
+        # Отправить уведомление пользователю через WebSocket
+        self.send(text_data=json.dumps({
+            'type': 'send_notification_to_user',
+            'message': "message"
+        }))
+
+
 class NewOrderConsumer(WebsocketConsumer):
     def connect(self):
         self.group_name = 'new_orders'
@@ -74,3 +86,21 @@ class NewOrderConsumer(WebsocketConsumer):
         }, cls=DjangoJSONEncoder))  # Используем DjangoJSONEncoder для сериализации объектов Django
 
 
+class ScheduledNotificationConsumer(WebsocketConsumer):
+    def connect(self):
+        self.group_name = 'notification'
+        async_to_sync(self.channel_layer.group_add)(self.group_name, self.channel_name)
+        print("NOTIF")
+        self.accept()
+        self.send_not()
+
+    def disconnect(self, close_code):
+        async_to_sync(self.channel_layer.group_discard)(self.group_name, self.channel_name)
+
+    def send_not(self):
+        #
+        self.send(text_data=json.dumps({
+            'type': 'send_not',
+            'order_id': "hi",
+            # Добавьте другие поля здесь при необходимости
+        }))

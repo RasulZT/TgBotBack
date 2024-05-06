@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Example</title>
+</head>
+<body>
+    <h1>WebSocket Example</h1>
+    <div id="notification"></div>
+
+    <script>
+        var wsUri = "ws://localhost:8000/ws/send_not/";  // Замените на адрес вашего WebSocket сервера
+
+        var websocket = new WebSocket(wsUri);
+
+        websocket.onopen = function (evt) {
+            console.log("Connected to WebSocket server");
+        };
+
+        websocket.onmessage = function (evt) {
+            var notificationDiv = document.getElementById("notification");
+            var message = JSON.parse(evt.data).message;
+            notificationDiv.innerHTML += "<p>" + "HI" + "</p>";
+        };
+
+        websocket.onerror = function (evt) {
+            console.error("WebSocket error: " + evt.data);
+        };
+
+        websocket.onclose = function (evt) {
+            console.log("WebSocket connection closed");
+        };
+    </script>
+</body>
+</html>

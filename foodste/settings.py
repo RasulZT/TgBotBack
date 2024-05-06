@@ -194,3 +194,10 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
 }
+
+CELERY_BEAT_SCHEDULE = {
+    'send_reminder': {
+        'task': 'service.tasks.send_reminder',
+        'schedule': 10.0,  # каждую минуту
+    },
+}

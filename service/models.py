@@ -21,3 +21,10 @@ class CompanySpots(models.Model):
     additions_on_stop = models.ManyToManyField(Addition,blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Reminder(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    message = models.CharField(max_length=255)
+    scheduled_time = models.DateTimeField()
+    is_sent = models.BooleanField(default=False)

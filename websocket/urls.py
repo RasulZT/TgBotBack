@@ -7,6 +7,7 @@ from . import views,consumers
 urlpatterns = [
     path('orders/', consumers.OrderConsumer.as_asgi()),
     path('new_orders/', consumers.NewOrderConsumer.as_asgi()),
+    path('send_not',consumers.ScheduledNotificationConsumer.as_asgi())
 
 
 ]
