@@ -17,6 +17,7 @@ class CompanySpots(models.Model):
     address_link = models.CharField(max_length=255)
     delivery_layers = models.ManyToManyField(DeliveryLayers,blank=True)
     products_on_stop = models.ManyToManyField(Product,blank=True)
+    is_delivery = models.BooleanField(default=False)
     from food.models import Addition
     additions_on_stop = models.ManyToManyField(Addition,blank=True)
     updated_at = models.DateTimeField(auto_now=True)

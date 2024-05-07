@@ -99,6 +99,7 @@ class Order(models.Model):
     delivery_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='delivery_orders',blank=True,null=True)
     status = models.CharField(max_length=20, choices=ORDER_STATUSES, default=MANAGER_AWAIT)
     bonus_used = models.BooleanField(default=False)
+    is_delivery = models.BooleanField(default=False)
     user_name = models.CharField(max_length=255)
     address=models.JSONField( blank=True)
     exact_address = models.CharField(max_length=255, null=True, blank=True)

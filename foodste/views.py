@@ -2,6 +2,7 @@ from django.http import HttpResponse
 from django.conf import settings
 import os
 
+
 def get_image(request, image_name):
     # Определяем путь к папке с изображениями
     images_folder = os.path.join(settings.BASE_DIR, 'media/images')
@@ -23,3 +24,4 @@ def get_image(request, image_name):
     else:
         # Если файл не найден, возвращаем HTTP 404 Not Found
         return HttpResponse(status=404)
+

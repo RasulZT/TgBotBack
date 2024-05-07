@@ -177,7 +177,8 @@ class OrderListAPIView(APIView):
             custom_user.phone = request_data.get('phone')
             custom_user.address = request_data.get('address')
             custom_user.exact_address = request_data.get('exact_address')
-            custom_user.bonus -= bonus_amount
+            if bonus_used:
+                custom_user.bonus -= bonus_amount
             custom_user.save()
             print(json.dumps(request_data.get('address'), ensure_ascii=False))
 
@@ -200,6 +201,7 @@ class OrderListAPIView(APIView):
 
 
 class OrderDetailAPIView(APIView):
+
     permission_classes = [AllowAny]
 
     def get_object(self, pk):
@@ -215,6 +217,8 @@ class OrderDetailAPIView(APIView):
 
     def put(self, request, pk):
         order = self.get_object(pk)
+        bonus_amount = order.bonus_amount
+        bonus_used = order.bonus_used
         sum_price = 0
         for i in list(order.products.values()):
             product = Product.objects.get(id=i['product_id_id'])
@@ -229,8 +233,11 @@ class OrderDetailAPIView(APIView):
                 except CustomUser.DoesNotExist:
                     custom_user = CustomUser.objects.create(pk=client_id)
                 if custom_user:
-                    print("HA", custom_user.bonus)
-                    custom_user.bonus += int(sum_price * 5 / 100)
+                    if bonus_used:
+                        print(bonus_used,bonus_amount)
+                        custom_user.bonus += int((sum_price-bonus_amount) * 5 / 100)
+                    else:
+                        custom_user.bonus += int(sum_price * 5 / 100)
                     custom_user.save()
 
             serializer.save()
@@ -424,7 +431,7 @@ class OrderFilterListAPIView(generics.ListAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ['client_id', 'company_id', 'status']
+    filterset_fields = ['client_id', 'company_id', 'status','delivery_id']
     ordering_fields = ['created_at']
     pagination_class = LimitOffsetPagination
 

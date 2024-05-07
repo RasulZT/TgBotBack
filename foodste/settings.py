@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     'loyalty',
     'service',
     'websocket',
+    'rest_framework_swagger',
+    'drf_yasg',
 
 ]
 

@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path, include
 
@@ -24,6 +25,8 @@ from django.conf import settings
 from .views import get_image
 import websocket.urls
 
+from .yasg import urlpatterns as doc_urls
+
 urlpatterns = [
     path('azim/', admin.site.urls),
     path('auth/', include(my_auth.urls)),
@@ -33,3 +36,5 @@ urlpatterns = [
     path('media/images/<str:image_name>/', get_image, name='get_image'),
     path("ws/", include("websocket.urls")),
 ]
+
+urlpatterns += doc_urls
