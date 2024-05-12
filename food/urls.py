@@ -18,4 +18,5 @@ urlpatterns = [
     path('tags/', TagListAPIView.as_view(), name='tag-list'),
     path('tags/<int:pk>/', TagDetailAPIView.as_view(), name='tag-detail'),
     path('filter_orders/', OrderFilterListAPIView.as_view(), name='order-list'),
+    path('order_count/<int:pk>/', OrderCountBonus.as_view(), name='order-bonus-count')
 ]

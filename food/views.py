@@ -174,6 +174,7 @@ class OrderListAPIView(APIView):
 
             # Обновляем поля экземпляра CustomUser
             custom_user.kaspi_phone = request_data.get('kaspi_phone')
+            custom_user.telegram_fullname=request.data.get('user_name')
             custom_user.phone = request_data.get('phone')
             custom_user.address = request_data.get('address')
             custom_user.exact_address = request_data.get('exact_address')
@@ -233,11 +234,29 @@ class OrderDetailAPIView(APIView):
                 except CustomUser.DoesNotExist:
                     custom_user = CustomUser.objects.create(pk=client_id)
                 if custom_user:
-                    if bonus_used:
-                        print(bonus_used,bonus_amount)
-                        custom_user.bonus += int((sum_price-bonus_amount) * 5 / 100)
+                    if order.is_delivery:
+                        if bonus_used:
+                            print(bonus_used,bonus_amount)
+                            custom_user.bonus += int((sum_price-bonus_amount) * 5 / 100)
+                        else:
+                            custom_user.bonus += int(sum_price * 5 / 100)
                     else:
-                        custom_user.bonus += int(sum_price * 5 / 100)
+                        if bonus_used:
+                            print(bonus_used, bonus_amount)
+                            custom_user.bonus += int((sum_price - bonus_amount) * 10 / 100)
+                        else:
+                            custom_user.bonus += int(sum_price * 10 / 100)
+
+                    custom_user.save()
+            if status_value=='rejected':
+                client_id = request.data.get('client_id')
+                try:
+                    custom_user = CustomUser.objects.get(pk=client_id)
+                except CustomUser.DoesNotExist:
+                    custom_user = CustomUser.objects.create(pk=client_id)
+                if custom_user:
+                    if bonus_used:
+                        custom_user.bonus+=bonus_amount
                     custom_user.save()
 
             serializer.save()
@@ -454,3 +473,34 @@ class OrderFilterListAPIView(generics.ListAPIView):
             queryset = Order.objects.all()
 
         return queryset
+
+
+class OrderCountBonus(APIView):
+    permission_classes = [AllowAny]
+    def get_object(self, pk):
+        try:
+            return Order.objects.get(pk=pk)
+        except Order.DoesNotExist:
+            raise Http404
+    def put(self, request, pk):
+        order = self.get_object(pk)
+        bonus_amount = order.bonus_amount
+        bonus_used = order.bonus_used
+        sum_price = 0
+        for i in list(order.products.values()):
+            product = Product.objects.get(id=i['product_id_id'])
+            sum_price += product.price
+        print(sum_price)
+        serializer = OrderSerializer(order, data=request.data)
+        if order.is_delivery:
+            if bonus_used:
+                bonus = int((sum_price - bonus_amount) * 5 / 100)
+            else:
+                bonus = int(sum_price * 5 / 100)
+        else:
+            if bonus_used:
+                bonus = int((sum_price - bonus_amount) * 10 / 100)
+            else:
+                bonus = int(sum_price * 10 / 100)
+        return Response(bonus)
+
