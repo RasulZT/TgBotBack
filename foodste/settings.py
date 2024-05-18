@@ -124,7 +124,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Almaty'
 
 USE_I18N = True
 
@@ -183,23 +183,42 @@ SIMPLE_JWT = {
 }
 ASGI_APPLICATION = "foodste.asgi.application"
 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("localhost", 6379)],
+        },
+    },
+}
 # CHANNEL_LAYERS = {
-#     "default": {
-#         "BACKEND": "channels_redis.core.RedisChannelLayer",
-#         "CONFIG": {
-#             "hosts": [("127.0.0.1", 6379)],
-#         },
+#     'default': {
+#         'BACKEND': 'channels.layers.InMemoryChannelLayer',
 #     },
 # }
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+
+CELERY_BEAT_SCHEDULE = {
+    'send_scheduled_notifications': {
+        'task': 'service.tasks.send_scheduled_notifications',
+        'schedule': 60.0,  # каждую минуту
     },
 }
 
-CELERY_BEAT_SCHEDULE = {
-    'send_reminder': {
-        'task': 'service.tasks.send_reminder',
-        'schedule': 10.0,  # каждую минуту
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
     },
 }

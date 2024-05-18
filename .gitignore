@@ -12,3 +12,5 @@ data/
 !**/migrations/__init__.py
 
 data.json
+
+debug.log

@@ -185,8 +185,11 @@ class OrderListAPIView(APIView):
 
             with connection.cursor() as cursor:
                 cursor.execute(
-                    "INSERT INTO addresses (user_id, address, creation_date) VALUES (%s, %s, CURRENT_TIMESTAMP)",
-                    [client_id, json.dumps(request_data.get('address'), ensure_ascii=False)]
+                    "INSERT INTO addresses (user_id, address, creation_date) "
+                    "SELECT %s, %s, CURRENT_TIMESTAMP "
+                    "WHERE NOT EXISTS (SELECT 1 FROM addresses WHERE user_id = %s AND address = %s)",
+                    [client_id, json.dumps(request_data.get('address'), ensure_ascii=False), client_id,
+                     json.dumps(request_data.get('address'), ensure_ascii=False)]
                 )
             # Создаем и сохраняем OrderProduct для каждого продукта в списке
             products_data = request_data.get('products', [])

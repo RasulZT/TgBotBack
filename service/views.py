@@ -1,11 +1,10 @@
 import json
 
 from django.shortcuts import render
-
+from .tasks import send_periodic_notification
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-
 from my_auth.models import CustomUser
 from my_auth.permissions import IsLogined
 from .models import DeliveryLayers, CompanySpots, Reminder
@@ -121,78 +120,104 @@ class CompanySpotsDetailAPIView(APIView):
 
 from django.db import connection
 from django.http import JsonResponse
-
+import re
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
+
+
+def parse_search_string(search_string):
+    search_string = search_string.lower().strip()
+
+    # Шаблоны для поиска улиц и микрорайонов
+    patterns = [
+        r'(?P<street>[^\bмикрорайон\b|\bмкр\.?\b]+)(\bмикрорайон\b|\bмкр\.?\b)\s*(?P<number>\d+)(?:-?(?P<suffix>\D*))?',
+        # микрорайон 1-й, мкр. 1-й и т.д.
+        r'(?P<street>.*?)\s+(микрорайон|мкр\.?)\s+(?P<number>\d+)\s*(?P<suffix>\D*)?',
+        r'(?P<street>(\bулица\b|\bпроспект\b|\bул\b)\s*(?P<number>\d+))',  # улица Прокофьева, проспект Райымбека и т.д.
+        r'(?P<street>.*?)\s+(?P<number>\d+)\s*(?P<suffix>\D*)?',
+        r'(?P<street>.*?)(\d+)(?:\s*(?P<suffix>\D+))?',  # Самал 1 3, Самал 2 и т.д.
+    ]
+
+    street = ""
+    housenumber = None
+
+    # Проверка для однословных запросов
+    if len(search_string.split()) == 1:
+        street = search_string  # Если строка состоит из одного слова, оно считается названием улицы или микрорайона
+    elif len(search_string.split()) == 3 and search_string.split()[1].isdigit() and not search_string.split()[2].isdigit() :
+        # Если строка содержит 3 элемента и второй элемент является числом
+        street = search_string.split()[0] +" "+search_string.split()[1]+" "+ search_string.split()[2]
+        return street, None
+    elif len(search_string.split()) == 3 and search_string.split()[1].isdigit() and search_string.split()[2].isdigit():
+        # Если строка содержит 3 элемента и второй элемент является числом
+        street = search_string.split()[0] +" "+search_string.split()[1]+" "+ "микрорайон"
+        return street, search_string.split()[2]
+    else:
+        for pattern in patterns:
+            match = re.search(pattern, search_string)
+            if match:
+                groups = match.groupdict()
+                street = groups.get('street', '').strip()
+                number = groups.get('number', '')
+                suffix = groups.get('suffix')
+                if suffix is not None:
+                    suffix = suffix.strip()  # Проверка на None перед вызовом strip()
+                if number:
+                    housenumber = number + suffix
+                break
+        else:
+            street = search_string
+
+    return street.strip(), housenumber
+
 
 @csrf_exempt
 def get_addresses(request):
     request_data = json.loads(request.body.decode('utf-8'))
-    if 'search_string' in request_data:
-        search_string = request_data['search_string'].lower()  # Приведение строки запроса к нижнему регистру
-
-        # Разделение строки запроса на улицу и номер дома
-        search_parts = search_string.split()
-        if len(search_parts) == 2:
-            housenumber=None
-            street = search_parts[0]
-            s=search_parts[1]
-            if(s.isdigit()):
-                housenumber = search_parts[1] +'%'
-            else:
-                street+= " " + search_parts[1]
-            print(street)
-
-        elif len(search_parts)==3:
-            street=search_parts[0] + " " + search_parts[1]
-            print(street)
-            housenumber=search_parts[2] + '%'
-        else:
-            street = search_string
-            housenumber = None  # Если номер дома не указан в запросе
-
-        with connection.cursor() as cursor:
-            if housenumber:
-                cursor.execute("""
-                    SELECT CONCAT(m.street, ' ', m.housenumber) AS address,
-                           m.building,
-                           m.levels,
-                           m.roof_shape,
-                           m.coordinates
-                    FROM map AS m
-                   WHERE similarity(m.street, %s) > 0.3 AND m.housenumber LIKE %s
-                    LIMIT 20
-                """, [street, housenumber])
-            else:
-                cursor.execute("""
-                    SELECT CONCAT(m.street, ' ', m.housenumber) AS address,
-                           m.building,
-                           m.levels,
-                           m.roof_shape,
-                           m.coordinates
-                    FROM map AS m
-                    WHERE similarity(m.street, %s) > 0.3
-                    LIMIT 20
-                """, [street])
-
-            rows = cursor.fetchall()  # Получаем все строки из результата запроса
-            addresses = []
-            for row in rows:
-                address = {
-                    'address': row[0],
-                    'building': row[1],
-                    'levels': row[2],
-                    'roof_shape': row[3],
-                    'coordinates': row[4]
-                }
-                addresses.append(address)
-
-        return JsonResponse(addresses, safe=False)
-    else:
+    if 'search_string' not in request_data:
         return JsonResponse({'error': 'Search string not provided'}, status=400)
 
+    search_string = request_data['search_string'].lower()
+    street, housenumber = parse_search_string(search_string)
+    if housenumber:
+        housenumber+="%"
 
+    with connection.cursor() as cursor:
+        if housenumber:
+            cursor.execute("""
+                   SELECT CONCAT(m.street, ' ', m.housenumber) AS address,
+                          m.building,
+                          m.levels,
+                          m.roof_shape,
+                          m.coordinates,
+                           similarity(LOWER(m.street), %s) AS similarity_score
+                   FROM map AS m
+                   WHERE similarity(LOWER(m.street), %s) > 0.4 AND m.housenumber LIKE %s 
+                   ORDER BY similarity_score DESC
+               """, [street,street, housenumber])
+        else:
+            cursor.execute("""
+                   SELECT CONCAT(m.street, ' ', m.housenumber) AS address,
+                          m.building,
+                          m.levels,
+                          m.roof_shape,
+                          m.coordinates,
+                          similarity(LOWER(m.street), %s) AS similarity_score
+                   FROM map AS m
+                   WHERE similarity(LOWER(m.street), %s) > 0.4
+                   ORDER BY similarity_score DESC
+               """, [street, street])
 
+        rows = cursor.fetchall()
+        addresses = [{
+            'address': row[0],
+            'building': row[1],
+            'levels': row[2],
+            'roof_shape': row[3],
+            'coordinates': row[4]
+        } for row in rows]
+
+    return JsonResponse(addresses, safe=False)
 
 @csrf_exempt
 @require_POST
@@ -258,6 +283,9 @@ def create_reminder(request):
         scheduled_time = request.POST.get('scheduled_time')
         user = request.user  # предполагая, что аутентификация пользователя уже выполнена
         reminder = Reminder.objects.create(user=user, message=message, scheduled_time=scheduled_time)
+        # Запланировать задачу Celery для отправки уведомления в заданное время
+        print(reminder.id)
+        # send_reminder_notification.apply_async(args=[reminder.id])
         return JsonResponse({'status': 'success', 'reminder_id': reminder.id})
     else:
         return JsonResponse({'status': 'error', 'message': 'Only POST requests are allowed'})
