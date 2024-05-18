@@ -281,11 +281,8 @@ def create_reminder(request):
     if request.method == 'POST':
         message = request.POST.get('message')
         scheduled_time = request.POST.get('scheduled_time')
-        user = request.user  # предполагая, что аутентификация пользователя уже выполнена
+        user = request.user
         reminder = Reminder.objects.create(user=user, message=message, scheduled_time=scheduled_time)
-        # Запланировать задачу Celery для отправки уведомления в заданное время
-        print(reminder.id)
-        # send_reminder_notification.apply_async(args=[reminder.id])
         return JsonResponse({'status': 'success', 'reminder_id': reminder.id})
     else:
         return JsonResponse({'status': 'error', 'message': 'Only POST requests are allowed'})
