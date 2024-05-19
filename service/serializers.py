@@ -79,3 +79,12 @@ class CompanySpotsSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
+
+from .models import Reminder
+
+
+class ReminderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Reminder
+        fields = ['id', 'user_id', 'message', 'scheduled_time', 'is_sent']

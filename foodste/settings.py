@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 import os
 from datetime import timedelta
 from pathlib import Path
+from celery.schedules import crontab
 
 import _locale
 
@@ -201,6 +202,10 @@ CELERY_BEAT_SCHEDULE = {
     'send_scheduled_notifications': {
         'task': 'service.tasks.send_scheduled_notifications',
         'schedule': 60.0,  # каждую минуту
+    },
+    'restart_index_task': {
+        'task': 'service.tasks.restart_index',
+        'schedule': crontab(hour=22, minute=30),  # каждый день в полночь
     },
 }
 

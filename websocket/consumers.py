@@ -95,5 +95,5 @@ class ScheduledNotificationConsumer(WebsocketConsumer):
             'type': 'send_not',
             'user_id':user_id,
             'message': message
-        }))
+        },ensure_ascii=False))
 
