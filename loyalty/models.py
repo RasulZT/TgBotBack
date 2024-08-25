@@ -52,3 +52,10 @@ class Promos(models.Model):
                                                    help_text="Добавлять акцию автоматически при регистрации")
     replace_existing_promo = models.BooleanField(default=False,
                                                  help_text="Заменить существующее промо, если оно уже связано с пользователем")
+
+class UsedPromos(models.Model):
+    user = models.ForeignKey('my_auth.CustomUser', on_delete=models.CASCADE)
+    promo = models.ForeignKey(Promos, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('user', 'promo')
