@@ -83,6 +83,7 @@ class Order(models.Model):
     ON_DELIVERY = 'on_delivery'
     INACTIVE = 'inactive'
     REJECTED='rejected'
+    ON_RUNNER='on_runner'
 
     ORDER_STATUSES = [
         (PAYMENT_AWAIT, 'Payment Await'),
@@ -91,7 +92,8 @@ class Order(models.Model):
         (DONE, 'Done'),
         (ON_DELIVERY, 'On Delivery'),
         (INACTIVE, 'Inactive'),
-        (REJECTED,'Rejected')
+        (REJECTED,'Rejected'),
+        (ON_RUNNER,'On runner')
     ]
     RATING_CHOICES = [(i, str(i)) for i in range(5)]  # Выбор оценки от 0 до 4
     id = models.AutoField(primary_key=True)

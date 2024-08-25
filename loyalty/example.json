@@ -1,0 +1,73 @@
+{
+  "id": 1,
+  "company": 1,
+  "name": "",
+  "description": "",
+  "can_be_triggered": true,
+  "triggers": [
+    // Продуктые триггеры
+    {
+      "id": 1,
+      "value": {
+        "product_id": 2
+      }
+    },
+    {
+      "id": 1,
+      "value": {
+        "product_ids": [2, 3, 4]
+      }
+    },
+    // Категорийные триггеры
+    {
+      "id": 2,
+      "value": {
+        "category_id": 1
+      }
+    },
+    {
+      "id": 2,
+      "value": {
+        "category_ids": [1, 2]
+      }
+    },
+    // Комбо триггеры
+    {
+      "id": 2,
+      "value": {
+        "product_lists": [
+          [1, 2, 3],
+          2,
+          [1, 2, 3]
+        ]
+      }
+    },
+    // Время триггеры
+    {
+      "id": 2,
+      "value": {
+        "date_start": "12-02-2024",
+        "date_end": "15-02-20024",
+        "days": [0, 1, 2, 3, 4, 5, 6],
+        "time_start": "12-02-2024",
+        "time_end": "15-02-20024"
+      }
+    },
+    // Остальные триггеры
+    {
+      "id": 1,
+      "value": {
+
+      }
+    }
+  ],
+  "payloads": [
+    {
+      "id": 1,
+      "value": {
+        "product_id": 1,
+        "discount_procent": 50
+      }
+    }
+  ]
+}

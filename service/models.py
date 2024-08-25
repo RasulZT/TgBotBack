@@ -8,7 +8,6 @@ class DeliveryLayers(models.Model):
     cost = models.IntegerField()
 
 class CompanySpots(models.Model):
-    manager = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='managed_companies',unique=True)
     name = models.CharField(max_length=255)
     link = models.CharField(max_length=255)
     open_time = models.TimeField()

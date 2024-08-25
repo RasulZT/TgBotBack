@@ -7,6 +7,7 @@ from .models import DeliveryLayers, CompanySpots
 from rest_framework import serializers
 
 
+
 class DeliveryLayersSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeliveryLayers

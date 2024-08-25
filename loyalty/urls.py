@@ -1,5 +1,6 @@
 from django.urls import path
-from .views import ActionListView, ActionDetailView, TriggerListView, PayloadListView, PromosAPIView, AnalyzeOrderView
+from .views import ActionListView, ActionDetailView, TriggerListView, PayloadListView, PromosAPIView, \
+    CustomUserActionView,OrderAnalysisView
 
 urlpatterns = [
     path('actions/', ActionListView.as_view(), name='action-list'),
@@ -7,5 +8,8 @@ urlpatterns = [
     path('triggers/', TriggerListView.as_view(), name='trigger-list'),
     path('payloads/', PayloadListView.as_view(), name='payload-list'),
     path('promos/', PromosAPIView.as_view(), name='promos-list'),
-    path('analyze-order/', AnalyzeOrderView.as_view(), name='analyze_order'),
+    path('analyze-order/', OrderAnalysisView.as_view(), name='analyze_order'),
+    path('actions_company/<int:company_id>/', ActionListView.as_view(), name='action-list-by-company'),
+    path('actions_user/', CustomUserActionView.as_view(), name='customuseraction-list'),  # Для получения всех и создания новой записи
+    path('actions_user/<int:pk>/', CustomUserActionView.as_view(), name='customuseraction-detail'),  # Для работы с конкретной записью
 ]

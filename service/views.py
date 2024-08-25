@@ -6,10 +6,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from my_auth.models import CustomUser
 from my_auth.permissions import IsLogined
+from my_auth.serializers import CustomUserSerializer
 from .models import DeliveryLayers, CompanySpots, Reminder
 from .serializers import DeliveryLayersSerializer, CompanySpotsSerializer, ReminderSerializer
 from rest_framework.permissions import AllowAny
 from django.http import Http404
+from rest_framework.decorators import api_view, permission_classes
 
 
 class DeliveryLayersAPIView(APIView):
@@ -114,9 +116,6 @@ class CompanySpotsDetailAPIView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-
-
-
 from django.db import connection
 from django.http import JsonResponse
 import re
@@ -143,13 +142,14 @@ def parse_search_string(search_string):
     # Проверка для однословных запросов
     if len(search_string.split()) == 1:
         street = search_string  # Если строка состоит из одного слова, оно считается названием улицы или микрорайона
-    elif len(search_string.split()) == 3 and search_string.split()[1].isdigit() and not search_string.split()[2].isdigit() :
+    elif len(search_string.split()) == 3 and search_string.split()[1].isdigit() and not search_string.split()[
+        2].isdigit():
         # Если строка содержит 3 элемента и второй элемент является числом
-        street = search_string.split()[0] +" "+search_string.split()[1]+" "+ search_string.split()[2]
+        street = search_string.split()[0] + " " + search_string.split()[1] + " " + search_string.split()[2]
         return street, None
     elif len(search_string.split()) == 3 and search_string.split()[1].isdigit() and search_string.split()[2].isdigit():
         # Если строка содержит 3 элемента и второй элемент является числом
-        street = search_string.split()[0] +" "+search_string.split()[1]+" "+ "микрорайон"
+        street = search_string.split()[0] + " " + search_string.split()[1] + " " + "микрорайон"
         return street, search_string.split()[2]
     else:
         for pattern in patterns:
@@ -179,7 +179,7 @@ def get_addresses(request):
     search_string = request_data['search_string'].lower()
     street, housenumber = parse_search_string(search_string)
     if housenumber:
-        housenumber+="%"
+        housenumber += "%"
 
     with connection.cursor() as cursor:
         if housenumber:
@@ -193,7 +193,7 @@ def get_addresses(request):
                    FROM map AS m
                    WHERE similarity(LOWER(m.street), %s) > 0.4 AND m.housenumber LIKE %s 
                    ORDER BY similarity_score DESC
-               """, [street,street, housenumber])
+               """, [street, street, housenumber])
         else:
             cursor.execute("""
                    SELECT CONCAT(m.street, ' ', m.housenumber) AS address,
@@ -218,10 +218,11 @@ def get_addresses(request):
 
     return JsonResponse(addresses, safe=False)
 
+
 @csrf_exempt
 @require_POST
 def get_matching_coordinates(request):
-    request_data = json.loads(request.body.decode('utf-8')) # Assuming the data is sent via POST request
+    request_data = json.loads(request.body.decode('utf-8'))  # Assuming the data is sent via POST request
     lat = request_data.get('lat')
     long = request_data.get('long')
 
@@ -258,8 +259,9 @@ def get_matching_coordinates(request):
 
 class AddressListView(APIView):
     permission_classes = [AllowAny]
+
     def get(self, request, user_id):
-        user_id=str(user_id)
+        user_id = str(user_id)
         with connection.cursor() as cursor:
             cursor.execute(
                 "SELECT DISTINCT address FROM Addresses WHERE user_id = %s",
@@ -271,9 +273,9 @@ class AddressListView(APIView):
         # Создаем список словарей с ключом 'address'
         addresses_list = [{'address': address} for address in address_dicts]
 
-
         # Возвращаем JSON-ответ
         return JsonResponse(addresses_list, safe=False)
+
 
 @csrf_exempt
 def create_reminder(request):
@@ -286,8 +288,10 @@ def create_reminder(request):
     else:
         return JsonResponse({'status': 'error', 'message': 'Only POST requests are allowed'})
 
+
 class ReminderAPIView(APIView):
     permission_classes = [AllowAny]
+
     def get(self, request, pk=None):
         if pk:
             reminder = get_object_or_404(Reminder, pk=pk)
@@ -316,3 +320,41 @@ class ReminderAPIView(APIView):
         reminder = get_object_or_404(Reminder, pk=pk)
         reminder.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def get_users_by_role_or_company(request):
+    role = request.data.get('role')
+    company_id = request.data.get('company_id')
+
+    users = CustomUser.objects.all()
+
+    if role:
+        users = users.filter(role=role)
+
+    if company_id:
+        try:
+            company = CompanySpots.objects.get(id=company_id)
+            users = users.filter(companies=company)
+        except CompanySpots.DoesNotExist:
+            return Response({"error": "Company not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    serializer = CustomUserSerializer(users, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class UserCompaniesAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, user_id):
+        try:
+            # Получение пользователя по telegram_id
+            user = CustomUser.objects.get(telegram_id=user_id)
+            # Получение связанных компаний (только их ID)
+            company_ids = user.companies.values_list('id', flat=True)
+            # Возвращаем в виде JSON
+            return JsonResponse(list(company_ids), safe=False)
+        except CustomUser.DoesNotExist:
+            # Если пользователь не найден, возвращаем пустой список
+            return JsonResponse([], safe=False)

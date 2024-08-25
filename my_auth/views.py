@@ -13,8 +13,9 @@ from rest_framework.views import APIView
 from rest_framework.authentication import TokenAuthentication
 from rest_framework import status
 
+from loyalty.models import Promos
 from .authentication import CustomTokenAuthentication
-from .models import CustomUser, UserToken
+from .models import CustomUser, UserToken, CustomUserAction
 from .permissions import IsLogined
 from .serializers import CustomUserSerializer
 
@@ -28,14 +29,10 @@ class UserRegistrationAPIView(APIView):
 
     def post(self, request, format=None):
         telegram_id = request.data.get('telegram_id')
-        promo = request.data.get('promo', '')  # По умолчанию promo равен пустой строке
-
+        promo_token = request.data.get('promo', None)  # Expecting a promo token in the request
         try:
             user = CustomUser.objects.get(telegram_id=telegram_id)
             created = False
-            if promo:
-                return Response({"Стартовый промокод доступен лишь новым пользователям"},
-                                status=status.HTTP_400_BAD_REQUEST)
         except CustomUser.DoesNotExist:
             serializer = CustomUserSerializer(data=request.data)
             if serializer.is_valid():
@@ -44,8 +41,42 @@ class UserRegistrationAPIView(APIView):
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if promo and not user.promo:  # Если promo передан и у пользователя его еще нет
-            user.promo = promo
+        if promo_token:
+            try:
+                promo = Promos.objects.get(token=promo_token)
+            except Promos.DoesNotExist:
+                return Response({"detail": "Invalid promo code."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if promo.replace_existing_promo or not user.promo:
+                user.promo = promo
+                user.save()
+
+            if created or promo.auto_add_on_registration:
+                try:
+                    customuser_action = CustomUserAction.objects.get(action_id=promo.action.id,
+                                                                     user_id=user.telegram_id)
+                    # Если объект найден, проверяем его действие
+                    if customuser_action.action_id != promo.action.id:
+                        CustomUserAction.objects.create(
+                            user=user,
+                            action=promo.action,
+                            amount=promo.amount,
+                            date_start=promo.date_start,
+                            date_end=promo.date_end,
+                            is_active=promo.is_active
+                        )
+                except CustomUserAction.DoesNotExist:
+                    # Если объект не найден, создаем новый
+                    CustomUserAction.objects.create(
+                        user=user,
+                        action=promo.action,
+                        amount=promo.amount,
+                        date_start=promo.date_start,
+                        date_end=promo.date_end,
+                        is_active=promo.is_active
+                    )
+        elif created and not promo_token:
+            user.bonus = 1000
             user.save()
 
         refresh = RefreshToken.for_user(user)
@@ -53,10 +84,11 @@ class UserRegistrationAPIView(APIView):
         jwt_create_time = refresh.current_time if created else None
 
         if created:
-            user_token = UserToken.objects.create(telegram_id=telegram_id, access_token=jwt_token, created_at=jwt_create_time)
+            user_token = UserToken.objects.create(telegram_id=telegram_id, access_token=jwt_token,
+                                                  created_at=jwt_create_time)
             user_token.save()
 
-        response_data = CustomUserSerializer(user).data  # Используем сериализатор для уже существующего пользователя
+        response_data = CustomUserSerializer(user).data
         response_data['jwt_token'] = jwt_token
         response_data['jwt_create_time'] = jwt_create_time
 
@@ -95,8 +127,10 @@ class UserByTelegramIdAPIView(APIView):
         except CustomUser.DoesNotExist:
             return self.handle_error("User not found", status.HTTP_404_NOT_FOUND)
 
+
 class UpdateTokenView(APIView):
     permission_classes = [AllowAny]
+
     def post(self, request, format=None):
         telegram_id = request.data.get('telegram_id')
         if telegram_id is None:

@@ -227,7 +227,7 @@ class OrderDetailAPIView(APIView):
         for i in list(order.products.values()):
             product = Product.objects.get(id=i['product_id_id'])
             sum_price += product.price
-        serializer = OrderSerializer(order, data=request.data)
+        serializer = OrderSerializer(order, data=request.data,partial=True)
         if serializer.is_valid():
             status_value = request.data.get('status', None)
             if status_value == 'inactive':
@@ -237,18 +237,19 @@ class OrderDetailAPIView(APIView):
                 except CustomUser.DoesNotExist:
                     custom_user = CustomUser.objects.create(pk=client_id)
                 if custom_user:
-                    if order.is_delivery:
-                        if bonus_used:
-                            print(bonus_used,bonus_amount)
-                            custom_user.bonus += int((sum_price-bonus_amount) * 5 / 100)
-                        else:
-                            custom_user.bonus += int(sum_price * 5 / 100)
-                    else:
-                        if bonus_used:
-                            print(bonus_used, bonus_amount)
-                            custom_user.bonus += int((sum_price - bonus_amount) * 10 / 100)
-                        else:
-                            custom_user.bonus += int(sum_price * 10 / 100)
+                    custom_user.bonus+=1000
+                    # if order.is_delivery:
+                    #     if bonus_used:
+                    #         print(bonus_used,bonus_amount)
+                    #         custom_user.bonus += int((sum_price-bonus_amount) * 5 / 100)
+                    #     else:
+                    #         custom_user.bonus += int(sum_price * 5 / 100)
+                    # else:
+                    #     if bonus_used:
+                    #         print(bonus_used, bonus_amount)
+                    #         custom_user.bonus += int((sum_price - bonus_amount) * 10 / 100)
+                    #     else:
+                    #         custom_user.bonus += int(sum_price * 10 / 100)
 
                     custom_user.save()
             if status_value=='rejected':

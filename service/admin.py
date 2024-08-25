@@ -11,6 +11,6 @@ class DeliveryLayersAdmin(admin.ModelAdmin):
 
 @admin.register(CompanySpots)
 class CompanySpotsAdmin(admin.ModelAdmin):
-    list_display = ('id', 'manager_id', 'address', 'address_link', 'updated_at', 'created_at')
+    list_display = ('id', 'address', 'address_link', 'updated_at', 'created_at')
 
 admin.site.register(Reminder)

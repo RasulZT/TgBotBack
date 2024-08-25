@@ -44,14 +44,15 @@ class CustomUser(AbstractBaseUser):
     kaspi_phone = models.CharField(max_length=20, blank=True)
     address = models.JSONField(blank=True,null=True)
     exact_address = models.CharField(max_length=255, null=True,blank=True)
-    bonus = models.IntegerField(default=1000)
+    bonus = models.IntegerField(default=0)
     role = models.CharField(max_length=10, choices=[('manager', 'Manager'), ('client', 'Client'), ('admin', 'Admin'),
-                                                    ('delivery', 'Delivery')], default='Client')
+                                                    ('delivery', 'Delivery'),('cook', 'Cook'),('runner', 'Runner')], default='Client')
     promo = models.OneToOneField(Promos, on_delete=models.SET_NULL, null=True, blank=True)
     blocked = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    activeActions = models.ManyToManyField(Action, related_name='active_users',blank=True)
+    companies = models.ManyToManyField('service.CompanySpots', related_name='managers', blank=True,null=True)
+
     USERNAME_FIELD = 'telegram_id'
     REQUIRED_FIELDS = ['telegram_fullname']
 
@@ -60,6 +61,17 @@ class CustomUser(AbstractBaseUser):
     def __str__(self):
         return self.telegram_fullname
 
+
+class CustomUserAction(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    action = models.ForeignKey(Action, on_delete=models.CASCADE)
+    amount = models.IntegerField()
+    date_start = models.DateTimeField(null=True,blank=True)
+    date_end = models.DateTimeField(null=True,blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('user', 'action')  # Для уникальности сочетания user-action
 
 class UserToken(models.Model):
     telegram_id = models.IntegerField()

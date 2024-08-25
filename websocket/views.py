@@ -3,42 +3,15 @@ from django.http import JsonResponse
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from food.models import Order
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-
-
-# def update_order_status(request, order_id):
-#     # Получаем заказ по его идентификатору
-#     order = get_object_or_404(Order, pk=order_id)
-#
-#     # Меняем статус заказа
-#     new_status = request.POST.get('new_status')
-#     order.status = new_status
-#     order.save()dw
-#
-#     # Отправляем сообщение о обновлении статуса заказа через WebSocket
-#     channel_layer = get_channel_layer()
-#     async_to_sync(channel_layer.group_send)(
-#         'orders',  # Название группы (канала)
-#         {
-#             'type': 'order_update',  # Тип сообщения, который обрабатывается consumer'ом
-#             'order_id': order.id,
-#             'status': new_status,
-#         }
-#     )
-#
-#     return JsonResponse({'status': 'success'})
-
-
+from datetime import datetime
 @receiver(post_save, sender=Order)
 def send_order_info(sender, instance, created, **kwargs):
-    print("AHAHAHA")
-    print(instance.client_id.telegram_id)
     if instance.delivery_id:
         telegram_id = instance.delivery_id.telegram_id
     else:
         telegram_id = None  # или другое значение по умолчанию
-
     if created:
         order_data = {
             'order_id': instance.id,
@@ -70,16 +43,37 @@ def send_order_info(sender, instance, created, **kwargs):
         )
 
 
+@receiver(pre_save, sender=Order)
+def save_old_order_state(sender, instance, **kwargs):
+    if instance.pk:
+        instance._previous_state = Order.objects.get(pk=instance.pk)
 
 @receiver(post_save, sender=Order)
 def send_order_update(sender, instance, **kwargs):
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        'orders',
-        {
-            'type': 'order_update',
-            'order_id': instance.id,
-            'status': instance.status,
-            # Add other fields here if needed
-        }
-    )
+    previous_state = getattr(instance, '_previous_state', None)
+
+    if previous_state:
+        changes = {}
+        for field in instance._meta.fields:
+            field_name = field.name
+            old_value = getattr(previous_state, field_name)
+            new_value = getattr(instance, field_name)
+            if old_value != new_value:
+                # Преобразование datetime объектов в строки формата ISO 8601
+                if isinstance(old_value, datetime):
+                    old_value = old_value.isoformat()
+                if isinstance(new_value, datetime):
+                    new_value = new_value.isoformat()
+
+                changes[field_name] = new_value
+
+        if changes:
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                'orders',
+                {
+                    'type': 'order_update',
+                    'order_id': instance.id,
+                    'changes': changes
+                }
+            )
