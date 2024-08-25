@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Action, Trigger, Payload, Promos
+from .models import Action, Trigger, Payload, Promos, UsedPromos
 
 
 class ActionSerializer(serializers.ModelSerializer):
@@ -22,3 +22,8 @@ class PromosSerializer(serializers.ModelSerializer):
     class Meta:
         model = Promos
         fields = ['token', 'name', 'link_to_source']
+
+class UsedPromosSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsedPromos
+        fields = ['user', 'promo']

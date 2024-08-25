@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 from rest_framework.authentication import TokenAuthentication
 from rest_framework import status
 
-from loyalty.models import Promos
+from loyalty.models import Promos, UsedPromos
 from .authentication import CustomTokenAuthentication
 from .models import CustomUser, UserToken, CustomUserAction
 from .permissions import IsLogined
@@ -47,6 +47,9 @@ class UserRegistrationAPIView(APIView):
             except Promos.DoesNotExist:
                 return Response({"detail": "Invalid promo code."}, status=status.HTTP_400_BAD_REQUEST)
 
+            if UsedPromos.objects.filter(user=user, promo=promo).exists():
+                return Response(CustomUserSerializer(user).data,status=status.HTTP_400_BAD_REQUEST)
+
             if promo.replace_existing_promo or not user.promo:
                 user.promo = promo
                 user.save()
@@ -75,6 +78,7 @@ class UserRegistrationAPIView(APIView):
                         date_end=promo.date_end,
                         is_active=promo.is_active
                     )
+            UsedPromos.objects.create(user=user, promo=promo)
         elif created and not promo_token:
             user.bonus = 1000
             user.save()
