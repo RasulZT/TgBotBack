@@ -16,7 +16,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
-from my_auth.models import CustomUser
+from my_auth.models import CustomUser, CustomUserAction
 from .models import Category, Product, OrderProduct, Order, Modifier, Addition, Tag
 from .serializers import CategorySerializer, ProductSerializer, OrderProductSerializer, OrderSerializer, \
     ModifierSerializer, AdditionSerializer, TagSerializer
@@ -153,6 +153,15 @@ class OrderListAPIView(APIView):
         bonus_used = request_data.get('bonus_used', False)
         bonus_amount = request_data.get('bonus_amount', 0)
         client_id = request_data.get('client_id')
+        order_actions = request_data.get('actions',[])
+        for action in order_actions:
+            user_action= CustomUserAction.objects.get(action_id=action['id'])
+            user_action.amount-=1
+            if user_action.amount==0:
+                user_action.delete()
+            else:
+                user_action.save()
+            print(f"Actions: {user_action}" )
 
         # Получаем или создаем экземпляр CustomUser
         try:
@@ -174,7 +183,7 @@ class OrderListAPIView(APIView):
 
             # Обновляем поля экземпляра CustomUser
             custom_user.kaspi_phone = request_data.get('kaspi_phone')
-            custom_user.telegram_fullname=request.data.get('user_name')
+            custom_user.telegram_fullname = request.data.get('user_name')
             custom_user.phone = request_data.get('phone')
             custom_user.address = request_data.get('address')
             custom_user.exact_address = request_data.get('exact_address')
@@ -205,8 +214,47 @@ class OrderListAPIView(APIView):
 
 
 class OrderDetailAPIView(APIView):
-
     permission_classes = [AllowAny]
+
+    def count_price(self,order):
+        products=order.products.all()
+        price=0
+        for product in products:
+            price+=product.price
+        return price
+
+    def check_bonus(self, actions, order):
+        bonus_amount = None
+        bonus_percent = None
+        bonus_with_percent=None
+        bonus_type = None
+        for action in actions:
+            for payload in action['payloads']:
+                bonus_am = payload.get('bonus_amount', None)
+                bonus_per = payload.get('bonus_percent', None)
+                bonus_typ = payload.get('bonus_type', None)
+                if bonus_am:
+                    bonus_amount = bonus_am
+                elif bonus_per and bonus_typ:
+                    bonus_percent = bonus_per
+                    bonus_type = bonus_typ
+                else:
+                    continue
+        if bonus_amount:
+            return {"bonus_amount": bonus_amount}
+        if bonus_percent:
+            if bonus_type == 'full_order':
+                full_price=self.count_price(order)
+                print(f"Full price:{full_price}")
+                bonus_with_percent=int(full_price*(bonus_percent/100))
+                return {"bonus_amount":bonus_with_percent}
+            elif bonus_type == 'dynamic':
+                full_price = self.count_price(order)
+                print(f"Full price:{full_price}")
+                bonus_with_percent = int(full_price * (bonus_percent / 100))
+                return {"bonus_amount": bonus_with_percent}
+            else:
+                pass
 
     def get_object(self, pk):
         try:
@@ -221,13 +269,17 @@ class OrderDetailAPIView(APIView):
 
     def put(self, request, pk):
         order = self.get_object(pk)
-        bonus_amount = order.bonus_amount
         bonus_used = order.bonus_used
+        actions = order.actions
+        # bonus_amount=self.get_bonus_amount(actions)
+        bonus = self.check_bonus(actions,order)
+        print(bonus['bonus_amount'])
+        # print(f"Bonus:{full_price}")
         sum_price = 0
         for i in list(order.products.values()):
             product = Product.objects.get(id=i['product_id_id'])
             sum_price += product.price
-        serializer = OrderSerializer(order, data=request.data,partial=True)
+        serializer = OrderSerializer(order, data=request.data, partial=True)
         if serializer.is_valid():
             status_value = request.data.get('status', None)
             if status_value == 'inactive':
@@ -237,22 +289,10 @@ class OrderDetailAPIView(APIView):
                 except CustomUser.DoesNotExist:
                     custom_user = CustomUser.objects.create(pk=client_id)
                 if custom_user:
-                    custom_user.bonus+=1000
-                    # if order.is_delivery:
-                    #     if bonus_used:
-                    #         print(bonus_used,bonus_amount)
-                    #         custom_user.bonus += int((sum_price-bonus_amount) * 5 / 100)
-                    #     else:
-                    #         custom_user.bonus += int(sum_price * 5 / 100)
-                    # else:
-                    #     if bonus_used:
-                    #         print(bonus_used, bonus_amount)
-                    #         custom_user.bonus += int((sum_price - bonus_amount) * 10 / 100)
-                    #     else:
-                    #         custom_user.bonus += int(sum_price * 10 / 100)
-
+                    custom_user.bonus += bonus
                     custom_user.save()
-            if status_value=='rejected':
+
+            if status_value == 'rejected':
                 client_id = request.data.get('client_id')
                 try:
                     custom_user = CustomUser.objects.get(pk=client_id)
@@ -260,7 +300,7 @@ class OrderDetailAPIView(APIView):
                     custom_user = CustomUser.objects.create(pk=client_id)
                 if custom_user:
                     if bonus_used:
-                        custom_user.bonus+=bonus_amount
+                        custom_user.bonus += bonus_used
                     custom_user.save()
 
             serializer.save()
@@ -454,7 +494,7 @@ class OrderFilterListAPIView(generics.ListAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ['client_id', 'company_id', 'status','delivery_id']
+    filterset_fields = ['client_id', 'company_id', 'status', 'delivery_id']
     ordering_fields = ['created_at']
     pagination_class = LimitOffsetPagination
 
@@ -481,11 +521,13 @@ class OrderFilterListAPIView(generics.ListAPIView):
 
 class OrderCountBonus(APIView):
     permission_classes = [AllowAny]
+
     def get_object(self, pk):
         try:
             return Order.objects.get(pk=pk)
         except Order.DoesNotExist:
             raise Http404
+
     def put(self, request, pk):
         order = self.get_object(pk)
         bonus_amount = order.bonus_amount
@@ -507,4 +549,3 @@ class OrderCountBonus(APIView):
             else:
                 bonus = int(sum_price * 10 / 100)
         return Response(bonus)
-

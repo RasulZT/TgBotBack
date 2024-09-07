@@ -1,5 +1,8 @@
 import json
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 
+from django.utils.decorators import method_decorator
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -27,6 +30,7 @@ from typing import List, Callable, Any
 from food.models import Product
 import copy
 from django.forms.models import model_to_dict
+
 
 @dataclass
 class InnerData:
@@ -169,7 +173,6 @@ def products_checker(trigger, order, can_be_repeated):
         return False, None
 
 
-
 def category_checker(trigger, order, can_be_repeated):
     category_id = trigger.get('category_id')
     if not category_id:
@@ -190,7 +193,6 @@ def category_checker(trigger, order, can_be_repeated):
     except Exception as e:
         print(e)
         return False, None
-
 
 
 def categories_checker(trigger, order, can_be_repeated):
@@ -414,7 +416,6 @@ def apply_product_price(product, new_price, inner_data: InnerData):
     )
 
 
-@pytest.mark.django_db
 def apply_discount_percent(product, discount_percent, inner_data: InnerData):
     product_price = sum_one_order_product(product, False)
     amount = product['amount']
@@ -430,7 +431,6 @@ def apply_discount_percent(product, discount_percent, inner_data: InnerData):
     )
 
 
-@pytest.mark.django_db
 def apply_discount_amount(product, discount_amount, inner_data: InnerData):
     print("apply_discount_amount")
     old_price = int(product['price'] / product['amount'])
@@ -443,7 +443,6 @@ def apply_discount_amount(product, discount_amount, inner_data: InnerData):
     )
 
 
-@pytest.mark.django_db
 def sum_one_order_product(order_product, sum_additions=True):
     active_mod = order_product.get("active_modifier")
     additions = order_product.get("additions")
@@ -526,6 +525,7 @@ def merge_products(products):
 
 class OrderAnalysisView(APIView):
     permission_classes = [AllowAny]
+
     def do_payloads(self, order: dict[str, any], payload, action_data, action):
         """
         action_data = {
@@ -534,7 +534,7 @@ class OrderAnalysisView(APIView):
         }
         """
         action_copy = copy.deepcopy(action)
-        action_copy=model_to_dict(action_copy)
+        action_copy = model_to_dict(action_copy)
         for i in range(len(payload)):
             product_ids_tr: List[int] = action_data.get("product_ids", [])
             amount_tr: List[int] = action_data.get("amount", [])
@@ -597,6 +597,7 @@ class OrderAnalysisView(APIView):
                 order['products'] = merge_products(order['products'])
                 action_copy['payloads'][i]["used_product_ids"] = product_ids
                 action_copy['payloads'][i]["used_amount"] = amount
+                action_copy['payloads'][i]["combo_lists"] = action_data.get("combo_lists", [])
                 break
 
             for product in products:
@@ -705,70 +706,79 @@ class OrderAnalysisView(APIView):
 
         return combo_list + product_list + products_list + category_list + categories_list + other_list
 
+    def triggers(self, action_index, action, order_data, order_data_copy, order_company_id):
+        action_data = None
+        action_type = None
+        combo_ids = None
+        payload = action.payloads
+        company_id = action.company.id
+        can_be_repeated = action.can_be_repeated
+        pass_checkers = True
+        triggers = action.triggers
+        data = None
+        if len(triggers) == 0 or not action.can_be_triggered or company_id != order_company_id:
+            pass_checkers = False
+        else:
+            for trigger in triggers:
+                for ind, checker in enumerate(trigger_checkers):
+                    try:
+
+                        result, data = checker(trigger, order_data_copy, can_be_repeated)
+                        # print(result, data)
+                        if not result:
+                            pass_checkers = False
+                            break
+                        elif data is not None and action_data is None:
+                            if action_type is None:
+                                action_type = action_types[ind]
+                            if action_type == 'combo':
+                                combo_ids = trigger.get('product_lists', None)
+                            action_data = data
+                        else:
+                            pass_checkers = False
+                    except Exception as e:
+                        print(f"ERROR: {e}")
+                        continue
+                if not pass_checkers:
+                    break
+
+        if not pass_checkers:
+            raise AttributeError()
+
+        print(f"ACTION DATA \n {action_data} \n-----------------------------------")
+
+        product_ids = data['product_ids']
+        amounts = data["amount"]
+        for index, product_id in enumerate(product_ids):
+            for product in order_data_copy['products']:
+                if product["product_id"] == product_id:
+                    if (product['amount'] - amounts[index]) == 0:
+                        order_data_copy['products'].remove(product)
+                    else:
+                        product['amount'] -= amounts[index]
+
+        action_data['type'] = action_type
+        action_data['combo_ids'] = combo_ids
+        print(f"Action_data: {action_data}")
+        self.do_payloads(order_data, payload, action_data, action)
+
     def post(self, request, *args, **kwargs):
-        print(f"Type:{type(request.data)},\nRequest data{request.data}")
-        order_data = request.data['order']
+        order_data = request.data
         order_data_copy = copy.deepcopy(order_data)
         actions = Action.objects.filter(can_be_triggered=True)
+        order_actions = order_data_copy['actions']
+        print(f"Order_actions:{order_actions}")
         order_company_id = order_data["company_id"]
 
         sorted_actions = self.sort_actions_by_product_lists(actions)
         print(f"Sorted actions : {sorted_actions}")
+
         for action_index, action in enumerate(sorted_actions):
-            action_data = None
-            action_type = None
-            combo_ids = None
-            payload = action.payloads
-            company_id = action.company.id
-            can_be_repeated = action.can_be_repeated
-            pass_checkers = True
-            triggers = action.triggers
-            data=None
-            if len(triggers) == 0 or not action.can_be_triggered or company_id != order_company_id:
-                pass_checkers = False
-            else:
-                for trigger in triggers:
-                    for ind, checker in enumerate(trigger_checkers):
-                        try:
-
-                            result, data = checker(trigger, order_data_copy, can_be_repeated)
-                            # print(result, data)
-                            if not result:
-                                pass_checkers = False
-                                break
-                            elif data is not None and action_data is None:
-                                if action_type is None:
-                                    action_type = action_types[ind]
-                                if action_type == 'combo':
-                                    combo_ids = trigger.get('product_lists', None)
-                                action_data = data
-                            else:
-                                pass_checkers = False
-                        except Exception as e:
-                            print(f"ERROR: {e}")
-                            continue
-                    if not pass_checkers:
-                        break
-
-            if not pass_checkers:
+            try:
+                self.triggers(action_index, action, order_data, order_data_copy, order_company_id)
+            except AttributeError:
                 continue
 
-            print(f"ACTION DATA \n {action_data} \n-----------------------------------")
-
-            product_ids = data['product_ids']
-            amounts = data["amount"]
-            for index, product_id in enumerate(product_ids):
-                for product in order_data_copy['products']:
-                    if product["product_id"] == product_id:
-                        if (product['amount'] - amounts[index]) == 0:
-                            order_data_copy['products'].remove(product)
-                        else:
-                            product['amount'] -= amounts[index]
-
-            action_data['type'] = action_type
-            action_data['combo_ids'] = combo_ids
-            print(f"Action_data: {action_data}")
-            self.do_payloads(order_data, payload, action_data, action)
         print(f"Order_data {order_data}")
 
         return Response(order_data, status=status.HTTP_200_OK)
@@ -783,6 +793,7 @@ class ActionListView(APIView):
         serializer = ActionSerializer(actions, many=True)
         return Response(serializer.data)
 
+    @csrf_exempt
     def post(self, request, format=None):
         serializer = ActionSerializer(data=request.data)
         if serializer.is_valid():
@@ -907,7 +918,7 @@ class CustomUserActionView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ActionListView(View):
+class ActionListViewCompany(View):
     def get(self, request, company_id):
         actions = Action.objects.filter(company_id=company_id)
         data = list(actions.values())  # Преобразуйте QuerySet в список словарей

@@ -1,4 +1,5 @@
 import json
+import os
 
 from django.shortcuts import render, get_object_or_404
 from rest_framework.views import APIView
@@ -358,3 +359,76 @@ class UserCompaniesAPIView(APIView):
         except CustomUser.DoesNotExist:
             # Если пользователь не найден, возвращаем пустой список
             return JsonResponse([], safe=False)
+
+
+class CheckUserIdAPIView(APIView):
+    permission_classes=[AllowAny]
+    def get(self, request, *args, **kwargs):
+        user_id = request.query_params.get('user_id')
+
+        if user_id is None:
+            return Response({'error': 'user_id parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if self.check_user_id_from_json(user_id):
+            return Response({'exists': True})
+        else:
+            return Response({'exists': False})
+
+    def check_user_id_from_json(self, user_id):
+        # Откройте и загрузите JSON-файл
+        with open('./service/users.json', 'r') as file:
+            data = json.load(file)
+
+        # Извлеките список user_ids
+        user_ids = data.get('user_ids', [])
+
+        if not isinstance(user_ids, list):
+            return False
+
+        return user_id in user_ids
+
+@csrf_exempt  # Отключаем CSRF для упрощения. Используйте с осторожностью в продакшене.
+def add_user_id_view(request):
+    if request.method == 'POST':
+        try:
+            # Извлекаем данные из тела запроса
+            data = json.loads(request.body)
+            user_id = data.get('user_id')
+
+            if not user_id:
+                return JsonResponse({'error': 'User ID not provided'}, status=400)
+
+            # Определяем путь к JSON-файлу
+            file_path = './service/users.json'
+
+            # Читаем или создаем файл JSON
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as file:
+                    try:
+                        data = json.load(file)
+                    except json.JSONDecodeError:
+                        data = {'user_ids': []}  # Если файл поврежден или пустой
+            else:
+                data = {'user_ids': []}
+
+            # Проверяем формат данных в файле
+            if not isinstance(data.get('user_ids', []), list):
+                return JsonResponse({'error': 'Invalid format in JSON file'}, status=400)
+
+            # Добавляем новый user_id в список, если его там нет
+            if user_id not in data['user_ids']:
+                data['user_ids'].append(user_id)
+
+                # Записываем обновленные данные обратно в файл
+                with open(file_path, 'w') as file:
+                    json.dump(data, file, indent=4)
+
+            return JsonResponse({'success': True})
+
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON format'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    # Если метод запроса не POST
+    return JsonResponse({'error': 'Invalid request method'}, status=405)

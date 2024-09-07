@@ -1,3 +1,4 @@
+import json
 import secrets
 from datetime import datetime
 
@@ -24,6 +25,31 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
+def add_user_id_to_json(user_id):
+    # Определите путь к JSON-файлу
+
+    try:
+        # Откройте и загрузите существующий JSON-файл
+        with open('./service/users.json', 'r') as file:
+            data = json.load(file)
+    except FileNotFoundError:
+        # Если файл не найден, создаем новый файл с пустым списком
+        data = {'user_ids': []}
+
+    # Проверьте, что user_ids является списком
+    if not isinstance(data.get('user_ids', []), list):
+        raise ValueError('Invalid format in JSON file: user_ids should be a list')
+
+    # Добавьте новый user_id в список, если его там нет
+    if user_id not in data['user_ids']:
+        data['user_ids'].append(user_id)
+
+    # Запишите обновленные данные обратно в файл
+    with open('./service/users.json', 'w') as file:
+        json.dump(data, file, indent=4)
+
+    return True
+
 class UserRegistrationAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -40,15 +66,14 @@ class UserRegistrationAPIView(APIView):
                 created = True
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        # add_user_id_to_json(user.telegram_id)
         if promo_token:
             try:
                 promo = Promos.objects.get(token=promo_token)
             except Promos.DoesNotExist:
                 return Response({"detail": "Invalid promo code."}, status=status.HTTP_400_BAD_REQUEST)
 
-            if UsedPromos.objects.filter(user=user, promo=promo).exists():
-                return Response(CustomUserSerializer(user).data,status=status.HTTP_400_BAD_REQUEST)
+
 
             if promo.replace_existing_promo or not user.promo:
                 user.promo = promo
@@ -56,6 +81,7 @@ class UserRegistrationAPIView(APIView):
 
             if created or promo.auto_add_on_registration:
                 try:
+
                     customuser_action = CustomUserAction.objects.get(action_id=promo.action.id,
                                                                      user_id=user.telegram_id)
                     # Если объект найден, проверяем его действие
@@ -78,7 +104,10 @@ class UserRegistrationAPIView(APIView):
                         date_end=promo.date_end,
                         is_active=promo.is_active
                     )
-            UsedPromos.objects.create(user=user, promo=promo)
+                except Exception as e:
+                    customuser_action = None
+
+
         elif created and not promo_token:
             user.bonus = 1000
             user.save()
@@ -158,3 +187,5 @@ class UpdateTokenView(APIView):
             "jwt_token": jwt_token,
             "jwt_create_time": jwt_create_time
         })
+
+

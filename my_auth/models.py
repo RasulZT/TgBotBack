@@ -47,7 +47,7 @@ class CustomUser(AbstractBaseUser):
     bonus = models.IntegerField(default=0)
     role = models.CharField(max_length=10, choices=[('manager', 'Manager'), ('client', 'Client'), ('admin', 'Admin'),
                                                     ('delivery', 'Delivery'),('cook', 'Cook'),('runner', 'Runner')], default='Client')
-    promo = models.OneToOneField(Promos, on_delete=models.SET_NULL, null=True, blank=True)
+    promo = models.ForeignKey(Promos, on_delete=models.SET_NULL, null=True, blank=True)
     blocked = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -5,7 +5,7 @@ from .models import Action, Trigger, Payload, Promos, UsedPromos
 class ActionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Action
-        fields = ['id', 'name', 'can_be_triggered', 'date_start', 'date_end', 'triggers', 'payloads']
+        fields = '__all__'
 
 class TriggerSerializer(serializers.ModelSerializer):
     class Meta:

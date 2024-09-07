@@ -13,8 +13,8 @@ class Action(models.Model):
     image = models.CharField(max_length=255, null=True, blank=True)
     can_use_bonus = models.BooleanField(default=False)  # Можно ли использовать с бонусом
     can_add_bonus = models.BooleanField(default=False)
-    date_start = models.DateField()
-    date_end = models.DateField()
+    date_start = models.DateField(blank=True,null=True)
+    date_end = models.DateField(blank=True,null=True)
     triggers = models.JSONField(null=True,blank=True)
     payloads = models.JSONField(null=True,blank=True)
 

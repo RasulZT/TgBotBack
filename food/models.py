@@ -103,11 +103,11 @@ class Order(models.Model):
     bonus_used = models.BooleanField(default=False)
     is_delivery = models.BooleanField(default=False)
     user_name = models.CharField(max_length=255)
-    address=models.JSONField( blank=True)
+    address=models.JSONField(blank=True)
     exact_address = models.CharField(max_length=255, null=True, blank=True)
     phone = models.CharField(max_length=20)
     kaspi_phone = models.CharField(max_length=20, blank=True)
-    actions = models.ManyToManyField(Action, blank=True,null=True)
+    actions = models.JSONField(blank=True,null=True)
     products = models.ManyToManyField(OrderProduct,blank=True)
     rating = models.IntegerField(choices=RATING_CHOICES, null=True, blank=True)
     rejected_text=models.TextField(null=True, blank=True)
@@ -121,5 +121,5 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Order {self.id} - {self.status}"
+        return f"Order ID: {self.id}"
 

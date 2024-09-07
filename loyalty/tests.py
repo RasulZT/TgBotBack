@@ -70,6 +70,8 @@ def find(lst: List[Any], function: Callable[[Any], bool]) -> int:
     return -1
 
 
+
+
 def check_order_cost(trigger, order, can_be_repeated):
     total_sum = 0
     for product in order['products']:
@@ -506,7 +508,7 @@ def merge_products(products):
 
 
 def load_test_data():
-    with open('tests/test35.json', encoding='utf-8') as f:
+    with open('tests/test23.json', encoding='utf-8') as f:
         data = json.load(f)
         if isinstance(data, dict):
             # Если data - это словарь, оберните его в список
@@ -624,6 +626,7 @@ def do_payloads(order: dict[str, any], payload, action_data, action):
                 if add_products:
                     product_copy = add_products
 
+
                 if product_copy is None:
                     continue
                 if isinstance(product, list):
@@ -640,6 +643,8 @@ def do_payloads(order: dict[str, any], payload, action_data, action):
                     if not is_similar:
                         print('is not similar')
                         new_products.append(new_product_to_add)
+
+
 
         order['products'].extend(new_products)
         order['products'] = merge_products(order['products'])
