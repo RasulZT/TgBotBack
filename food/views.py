@@ -7,7 +7,7 @@ from rest_framework import generics
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter
 from rest_framework.pagination import LimitOffsetPagination
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 
 # Create your views here.
 from rest_framework.permissions import AllowAny
@@ -17,9 +17,9 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from my_auth.models import CustomUser, CustomUserAction
-from .models import Category, Product, OrderProduct, Order, Modifier, Addition, Tag
+from .models import Category, Product, OrderProduct, Order, Modifier, Addition, Tag, Company
 from .serializers import CategorySerializer, ProductSerializer, OrderProductSerializer, OrderSerializer, \
-    ModifierSerializer, AdditionSerializer, TagSerializer
+    ModifierSerializer, AdditionSerializer, TagSerializer, CompanySerializer
 
 from django.http import Http404
 
@@ -549,3 +549,37 @@ class OrderCountBonus(APIView):
             else:
                 bonus = int(sum_price * 10 / 100)
         return Response(bonus)
+
+
+class CompanyListCreateView(APIView):
+    def get(self, request):
+        companies = Company.objects.all()
+        serializer = CompanySerializer(companies, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = CompanySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CompanyDetailView(APIView):
+    def get(self, request, pk):
+        company = get_object_or_404(Company, pk=pk)
+        serializer = CompanySerializer(company)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        company = get_object_or_404(Company, pk=pk)
+        serializer = CompanySerializer(company, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        company = get_object_or_404(Company, pk=pk)
+        company.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
