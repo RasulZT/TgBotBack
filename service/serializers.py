@@ -3,7 +3,7 @@ from rest_framework import serializers
 from food.models import Product, Addition
 from my_auth.models import CustomUser
 from my_auth.serializers import CustomUserSerializer
-from .models import DeliveryLayers, CompanySpots
+from .models import DeliveryLayers, CompanySpots, Integration, Payment
 from rest_framework import serializers
 
 
@@ -89,3 +89,15 @@ class ReminderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reminder
         fields = ['id', 'user_id', 'message', 'scheduled_time', 'is_sent']
+
+
+class IntegrationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Integration
+        fields = ['id', 'token', 'created_at', 'updated_at', 'user','api']
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['order_id', 'payment_data']

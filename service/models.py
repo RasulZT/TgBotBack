@@ -1,11 +1,14 @@
 from django.db import models
 from food.models import Product
 from my_auth.models import CustomUser
-from food.models import Product,Action,OrderProduct
-
+from food.models import Product, Action, OrderProduct
+from django.utils import timezone
+from django.core.validators import MinLengthValidator
+from django.contrib.auth.hashers import make_password
 class DeliveryLayers(models.Model):
     points = models.JSONField()
     cost = models.IntegerField()
+
 
 class CompanySpots(models.Model):
     name = models.CharField(max_length=255)
@@ -14,11 +17,11 @@ class CompanySpots(models.Model):
     close_time = models.TimeField()
     address = models.JSONField()
     address_link = models.CharField(max_length=255)
-    delivery_layers = models.ManyToManyField(DeliveryLayers,blank=True)
-    products_on_stop = models.ManyToManyField(Product,blank=True)
+    delivery_layers = models.ManyToManyField(DeliveryLayers, blank=True)
+    products_on_stop = models.ManyToManyField(Product, blank=True)
     is_delivery = models.BooleanField(default=False)
     from food.models import Addition
-    additions_on_stop = models.ManyToManyField(Addition,blank=True)
+    additions_on_stop = models.ManyToManyField(Addition, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -28,6 +31,7 @@ class Reminder(models.Model):
     message = models.CharField(max_length=255)
     scheduled_time = models.DateTimeField()
     is_sent = models.BooleanField(default=False)
+
 
 # models.py
 class ArchivedOrder(models.Model):
@@ -51,7 +55,8 @@ class ArchivedOrder(models.Model):
 
     original_order_id = models.IntegerField()
     client_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='archived_client_orders')
-    delivery_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='archived_delivery_orders', blank=True, null=True)
+    delivery_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='archived_delivery_orders',
+                                    blank=True, null=True)
     status = models.CharField(max_length=20, choices=ORDER_STATUSES, default=MANAGER_AWAIT)
     bonus_used = models.BooleanField(default=False)
     is_delivery = models.BooleanField(default=False)
@@ -75,3 +80,32 @@ class ArchivedOrder(models.Model):
     def __str__(self):
         return f"Archived Order {self.original_order_id} - {self.status}"
 
+
+class Integration(models.Model):
+    companySpot = models.ForeignKey('service.CompanySpots', on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    login = models.CharField(max_length=25,unique=True)
+    password = models.CharField(max_length=128)  # Пароль лучше хранить в зашифрованном виде
+    token = models.CharField(max_length=40, unique=True, validators=[MinLengthValidator(10)])  # Уникальный токен для нас (не каспи)
+    api=models.CharField(max_length=128)
+    created_at = models.DateTimeField(default=timezone.now)  # Время создания
+    updated_at = models.DateTimeField(auto_now=True)  # Время последнего обновления
+
+    class Meta:
+        unique_together = ('companySpot', 'user')  # Уникальная комбинация companySpot и user
+
+    def __str__(self):
+        return f"Integration for {self.user} with {self.companySpot}"
+
+    # Пример метода для шифрования пароля перед сохранением
+    def save(self, *args, **kwargs):
+        if self.password:
+            self.password = self.encrypt_password(self.password)  # Метод для шифрования
+        super().save(*args, **kwargs)
+
+    def encrypt_password(self, raw_password):
+        return make_password(raw_password)
+
+class Payment(models.Model):
+    order_id = models.CharField(max_length=100, unique=True)  # Уникальный идентификатор заказа
+    payment_data = models.JSONField()

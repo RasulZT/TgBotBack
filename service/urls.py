@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import CompanySpotsAPIView, DeliveryLayersAPIView, DeliveryLayersDetailAPIView, CompanySpotsDetailAPIView, \
     get_addresses, get_matching_coordinates, AddressListView, create_reminder, ReminderAPIView, \
-    get_users_by_role_or_company, UserCompaniesAPIView, CheckUserIdAPIView,add_user_id_view
+    get_users_by_role_or_company, UserCompaniesAPIView, CheckUserIdAPIView, add_user_id_view, UserActionsView, \
+    IntegrationCreateView, IntegrationDetailView, PaymentView, PaymentDetailView
 
 urlpatterns = [
     path('company_spots/', CompanySpotsAPIView.as_view(), name='company-spot-list'),
@@ -18,4 +19,9 @@ urlpatterns = [
     path('user/<str:user_id>/companies/', UserCompaniesAPIView.as_view(), name='user-companies'),
     path('check-user-id/', CheckUserIdAPIView.as_view(), name='check_user_id'),
     path('add_user_id/', add_user_id_view, name='add_user_id'),
+    path('user/<str:user_id>/actions/', UserActionsView.as_view(), name='user-actions'),
+    path('integrations/', IntegrationCreateView.as_view(), name='integration-list-create'),
+    path('integrations/<int:pk>/', IntegrationDetailView.as_view(), name='integration-detail'),
+    path('payments/', PaymentView.as_view(), name='payment-list'),  # Получение всех платежей и создание нового
+    path('payments/<str:order_id>/', PaymentDetailView.as_view(), name='payment-detail'),
 ]

@@ -74,7 +74,7 @@ class CustomUserAction(models.Model):
         unique_together = ('user', 'action')  # Для уникальности сочетания user-action
 
 class UserToken(models.Model):
-    telegram_id = models.IntegerField()
+    telegram_id = models.CharField(blank=True,null=True)
     access_token = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -1,20 +1,24 @@
 import json
 import os
-
+from django.utils import timezone
 from django.shortcuts import render, get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from my_auth.models import CustomUser
+from django.db import IntegrityError
+
+from loyalty.serializers import ActionSerializer
+from my_auth.models import CustomUser, CustomUserAction
 from my_auth.permissions import IsLogined
-from my_auth.serializers import CustomUserSerializer
-from .models import DeliveryLayers, CompanySpots, Reminder
-from .serializers import DeliveryLayersSerializer, CompanySpotsSerializer, ReminderSerializer
+from my_auth.serializers import CustomUserSerializer, CustomUserActionSerializer
+from .models import DeliveryLayers, CompanySpots, Reminder, Integration, Payment
+from .serializers import DeliveryLayersSerializer, CompanySpotsSerializer, ReminderSerializer, IntegrationSerializer, \
+    PaymentSerializer
 from rest_framework.permissions import AllowAny
 from django.http import Http404
 from rest_framework.decorators import api_view, permission_classes
-
-
+from django.utils.crypto import get_random_string
+from django.contrib.auth.hashers import check_password
 class DeliveryLayersAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -432,3 +436,190 @@ def add_user_id_view(request):
 
     # Если метод запроса не POST
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+class UserActionsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, user_id):
+        # Получаем пользователя по user_id
+        user = get_object_or_404(CustomUser, telegram_id=user_id)
+
+        # Получаем текущее время
+        now = timezone.now()
+        print(f"{now},\n"
+              f"{CustomUserAction.objects.filter(date_start__lte=now,date_end__gte=now)}")
+        # Получаем все действия (Action), связанные с пользователем через CustomUserAction
+        user_actions = CustomUserAction.objects.filter(
+            user=user,
+            amount__gt=0,  # amount должно быть больше 0
+            date_start__lte=now,  # текущая дата должна быть после date_start
+            date_end__gte=now  # текущая дата должна быть до date_end
+        )
+
+        actions = [user_action.action for user_action in user_actions]  # Получаем список акций
+
+        # Сериализуем акции
+        serializer = ActionSerializer(actions, many=True)
+
+        # Возвращаем ответ
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class IntegrationCreateView(APIView):
+    permission_classes = [AllowAny]  # Защита представления
+
+    def get(self, request):
+        login = request.query_params.get('login')
+        password = request.query_params.get('password')
+
+        # Проверка наличия логина и пароля
+        if not login or not password:
+            return Response({"error": "Login and password are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Пытаемся найти интеграцию по логину
+        try:
+            integration = Integration.objects.get(login=login)
+
+            # Проверяем правильность пароля
+            if check_password(password, integration.password):  # Используйте метод проверки пароля
+                # Сериализуем данные интеграции без логина и пароля
+                serializer = IntegrationSerializer(integration)
+                # Убираем логин и пароль из ответа
+                integration_data = serializer.data
+                integration_data.pop('login', None)
+                integration_data.pop('password', None)
+
+                return Response(integration_data, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Incorrect password."}, status=status.HTTP_403_FORBIDDEN)
+
+        except Integration.DoesNotExist:
+            return Response({"error": "Integration not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        login = request.data.get('login')
+        password = request.data.get('password')
+        api = request.data.get('api')
+
+        if login and password:
+            # Проверяем, существует ли временный пользователь с telegram_id = "-1"
+            try:
+                temp_user = CustomUser.objects.get(telegram_id="-1")
+
+                # Генерация уникального токена
+                token = get_random_string(length=40)  # Создаем случайный токен длиной 40 символов
+
+                # Создаем новый объект интеграции с временным пользователем
+                integration = Integration(
+                    login=login,
+                    password=password,  # Будет зашифровано в модели
+                    user=temp_user,  # Используем существующего временного пользователя
+                    token=token,  # Используем сгенерированный токен
+                    api=api
+                )
+                integration.save()  # Сохраняем объект в базе данных
+            except IntegrityError:
+                return Response({"error": "Integration with this login already exists."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            except CustomUser.DoesNotExist:
+                # Если временный пользователь не найден, создаем его
+                temp_user = CustomUser.objects.create(
+                    telegram_id="-1",  # Используем -1 как временный идентификатор
+                    telegram_fullname="Temporary User",  # Можно указать временное имя
+                    blocked=True  # Заносим временного пользователя в блокированные
+                )
+
+                # Генерация уникального токена
+                token = get_random_string(length=40)  # Создаем случайный токен длиной 40 символов
+
+                # Создаем новый объект интеграции с временным пользователем
+                integration = Integration(
+                    login=login,
+                    password=password,  # Будет зашифровано в модели
+                    user=temp_user,  # Используем временного пользователя
+                    token=token,  # Используем сгенерированный токен
+                    api = api
+                )
+                integration.save()  # Сохраняем объект в базе данных
+
+
+            # Сериализуем данные и возвращаем респонс
+            serializer = IntegrationSerializer(integration)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response({"error": "Invalid data"}, status=status.HTTP_400_BAD_REQUEST)
+class IntegrationDetailView(APIView):
+    def get(self, request, pk):
+        integration = get_object_or_404(Integration, pk=pk)
+        serializer = IntegrationSerializer(integration)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        integration = get_object_or_404(Integration, pk=pk)
+        serializer = IntegrationSerializer(integration, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        integration = get_object_or_404(Integration, pk=pk)
+        integration.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PaymentView(APIView):
+    # Получение всех платежей
+    permission_classes = [AllowAny]
+    def get(self, request):
+        payments = Payment.objects.all()
+        serializer = PaymentSerializer(payments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # Создание нового платежа
+    def post(self, request):
+        serializer = PaymentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PaymentDetailView(APIView):
+    # Получение информации о конкретном платеже по order_id
+    def get(self, request, order_id):
+        try:
+            payment = Payment.objects.get(order_id=order_id)
+        except Payment.DoesNotExist:
+            return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PaymentSerializer(payment)
+        return Response(serializer.data)
+
+    # Обновление данных о платеже
+    def put(self, request, order_id):
+        try:
+            payment = Payment.objects.get(order_id=order_id)
+        except Payment.DoesNotExist:
+            return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PaymentSerializer(payment, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # Удаление платежа
+    def delete(self, request, order_id):
+        try:
+            payment = Payment.objects.get(order_id=order_id)
+        except Payment.DoesNotExist:
+            return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        payment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

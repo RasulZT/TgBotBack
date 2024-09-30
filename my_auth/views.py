@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from rest_framework.authentication import TokenAuthentication
 from rest_framework import status
 
-from loyalty.models import Promos, UsedPromos
+from loyalty.models import Promos
 from .authentication import CustomTokenAuthentication
 from .models import CustomUser, UserToken, CustomUserAction
 from .permissions import IsLogined

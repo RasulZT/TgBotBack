@@ -153,15 +153,19 @@ class OrderListAPIView(APIView):
         bonus_used = request_data.get('bonus_used', False)
         bonus_amount = request_data.get('bonus_amount', 0)
         client_id = request_data.get('client_id')
-        order_actions = request_data.get('actions',[])
+        order_actions = request_data.get('actions', [])
         for action in order_actions:
-            user_action= CustomUserAction.objects.get(action_id=action['id'])
-            user_action.amount-=1
-            if user_action.amount==0:
-                user_action.delete()
-            else:
+            try:
+                user = CustomUser.objects.get(telegram_id=client_id)  # Получаем объект пользователя по его ID
+                user_action = CustomUserAction.objects.get(action_id=action['id'], user_id=client_id)
+                                                               # user=user)  # Фильтруем по объекту пользователя и ID действия
+            except CustomUserAction.DoesNotExist:
+                user_action = CustomUserAction.objects.none()
+                continue # Или другой обработчик отсутствия пользователя
+            if user_action.amount > 0:
+                user_action.amount -= 1
                 user_action.save()
-            print(f"Actions: {user_action}" )
+            print(f"Actions: {user_action}")
 
         # Получаем или создаем экземпляр CustomUser
         try:
@@ -216,17 +220,17 @@ class OrderListAPIView(APIView):
 class OrderDetailAPIView(APIView):
     permission_classes = [AllowAny]
 
-    def count_price(self,order):
-        products=order.products.all()
-        price=0
+    def count_price(self, order):
+        products = order.products.all()
+        price = 0
         for product in products:
-            price+=product.price
+            price += product.price
         return price
 
     def check_bonus(self, actions, order):
         bonus_amount = None
         bonus_percent = None
-        bonus_with_percent=None
+        bonus_with_percent = None
         bonus_type = None
         for action in actions:
             for payload in action['payloads']:
@@ -244,17 +248,15 @@ class OrderDetailAPIView(APIView):
             return {"bonus_amount": bonus_amount}
         if bonus_percent:
             if bonus_type == 'full_order':
-                full_price=self.count_price(order)
-                print(f"Full price:{full_price}")
-                bonus_with_percent=int(full_price*(bonus_percent/100))
-                return {"bonus_amount":bonus_with_percent}
-            elif bonus_type == 'dynamic':
                 full_price = self.count_price(order)
                 print(f"Full price:{full_price}")
                 bonus_with_percent = int(full_price * (bonus_percent / 100))
                 return {"bonus_amount": bonus_with_percent}
+            elif bonus_type == 'dynamic':
+                pass
             else:
                 pass
+        return {"bonus_amount": 0}
 
     def get_object(self, pk):
         try:
@@ -271,10 +273,13 @@ class OrderDetailAPIView(APIView):
         order = self.get_object(pk)
         bonus_used = order.bonus_used
         actions = order.actions
-        # bonus_amount=self.get_bonus_amount(actions)
-        bonus = self.check_bonus(actions,order)
-        print(bonus['bonus_amount'])
-        # print(f"Bonus:{full_price}")
+
+        try:
+            bonus = self.check_bonus(actions, order)
+            print(bonus)
+        except Exception as e:
+            bonus= {'bonus_amount':0}
+            print(f"Ошибка в логике бонусов: {e} \n Bonus:{bonus}")
         sum_price = 0
         for i in list(order.products.values()):
             product = Product.objects.get(id=i['product_id_id'])
@@ -289,7 +294,8 @@ class OrderDetailAPIView(APIView):
                 except CustomUser.DoesNotExist:
                     custom_user = CustomUser.objects.create(pk=client_id)
                 if custom_user:
-                    custom_user.bonus += bonus
+                    print(custom_user.bonus,flush=True)
+                    custom_user.bonus += bonus['bonus_amount']
                     custom_user.save()
 
             if status_value == 'rejected':
@@ -519,38 +525,6 @@ class OrderFilterListAPIView(generics.ListAPIView):
         return queryset
 
 
-class OrderCountBonus(APIView):
-    permission_classes = [AllowAny]
-
-    def get_object(self, pk):
-        try:
-            return Order.objects.get(pk=pk)
-        except Order.DoesNotExist:
-            raise Http404
-
-    def put(self, request, pk):
-        order = self.get_object(pk)
-        bonus_amount = order.bonus_amount
-        bonus_used = order.bonus_used
-        sum_price = 0
-        for i in list(order.products.values()):
-            product = Product.objects.get(id=i['product_id_id'])
-            sum_price += product.price
-        print(sum_price)
-        serializer = OrderSerializer(order, data=request.data)
-        if order.is_delivery:
-            if bonus_used:
-                bonus = int((sum_price - bonus_amount) * 5 / 100)
-            else:
-                bonus = int(sum_price * 5 / 100)
-        else:
-            if bonus_used:
-                bonus = int((sum_price - bonus_amount) * 10 / 100)
-            else:
-                bonus = int(sum_price * 10 / 100)
-        return Response(bonus)
-
-
 class CompanyListCreateView(APIView):
     def get(self, request):
         companies = Company.objects.all()
@@ -583,3 +557,62 @@ class CompanyDetailView(APIView):
         company = get_object_or_404(Company, pk=pk)
         company.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class BonusCountView(APIView):
+    permission_classes = [AllowAny]
+    def count_price(self, order):
+        products = order.products.all()
+        price = 0
+        for product in products:
+            price += product.price
+        return price
+
+    def check_bonus(self, actions, order):
+        bonus_amount = None
+        bonus_percent = None
+        bonus_with_percent = None
+        bonus_type = None
+        for action in actions:
+            for payload in action['payloads']:
+                bonus_am = payload.get('bonus_amount', None)
+                bonus_per = payload.get('bonus_percent', None)
+                bonus_typ = payload.get('bonus_type', None)
+                if bonus_am:
+                    bonus_amount = bonus_am
+                elif bonus_per and bonus_typ:
+                    bonus_percent = bonus_per
+                    bonus_type = bonus_typ
+                else:
+                    continue
+        if bonus_amount:
+            return {"bonus_amount": bonus_amount}
+        if bonus_percent:
+            if bonus_type == 'full_order':
+                full_price = self.count_price(order)
+                print(f"Full price:{full_price}")
+                bonus_with_percent = int(full_price * (bonus_percent / 100))
+                return {"bonus_amount": bonus_with_percent}
+            elif bonus_type == 'dynamic':
+                pass
+            else:
+                pass
+        return {"bonus_amount": 0}
+
+    def get_object(self, pk):
+        try:
+            return Order.objects.get(pk=pk)
+        except Order.DoesNotExist:
+            raise Http404
+
+    def get(self, request, pk):
+        order = self.get_object(pk)
+        actions = order.actions
+        try:
+            bonus = self.check_bonus(actions, order)
+            print(bonus)
+        except Exception as e:
+            bonus = {'bonus_amount': 0}
+            print(f"Ошибка в логике бонусов: {e} \n Bonus:{bonus}")
+        serializer = OrderSerializer(order)
+        return Response(bonus)
+

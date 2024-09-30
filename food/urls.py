@@ -20,5 +20,6 @@ urlpatterns = [
     path('companies/', CompanyListCreateView.as_view(), name='company-list-create'),
     path('companies/<int:pk>/', CompanyDetailView.as_view(), name='company-detail'),
     path('filter_orders/', OrderFilterListAPIView.as_view(), name='order-list'),
-    path('order_count/<int:pk>/', OrderCountBonus.as_view(), name='order-bonus-count')
+    path('order_bonus/<int:pk>/', BonusCountView.as_view(), name='order-bonus-count'),
+
 ]
