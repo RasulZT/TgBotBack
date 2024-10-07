@@ -2,7 +2,7 @@ from django.urls import path
 from .views import CompanySpotsAPIView, DeliveryLayersAPIView, DeliveryLayersDetailAPIView, CompanySpotsDetailAPIView, \
     get_addresses, get_matching_coordinates, AddressListView, create_reminder, ReminderAPIView, \
     get_users_by_role_or_company, UserCompaniesAPIView, CheckUserIdAPIView, add_user_id_view, UserActionsView, \
-    IntegrationCreateView, IntegrationDetailView, PaymentView, PaymentDetailView
+    IntegrationCreateView, IntegrationDetailView, PaymentView, PaymentDetailView, encrypt_view, decrypt_view
 
 urlpatterns = [
     path('company_spots/', CompanySpotsAPIView.as_view(), name='company-spot-list'),
@@ -24,4 +24,6 @@ urlpatterns = [
     path('integrations/<int:pk>/', IntegrationDetailView.as_view(), name='integration-detail'),
     path('payments/', PaymentView.as_view(), name='payment-list'),  # Получение всех платежей и создание нового
     path('payments/<str:order_id>/', PaymentDetailView.as_view(), name='payment-detail'),
+    path('encrypt/', encrypt_view, name='encrypt'),
+    path('decrypt/', decrypt_view, name='decrypt'),
 ]

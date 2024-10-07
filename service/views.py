@@ -19,6 +19,12 @@ from django.http import Http404
 from rest_framework.decorators import api_view, permission_classes
 from django.utils.crypto import get_random_string
 from django.contrib.auth.hashers import check_password
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import serialization, hashes
+import base64
+
+
+
 class DeliveryLayersAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -623,3 +629,100 @@ class PaymentDetailView(APIView):
 
         payment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def generate_keypair():
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048
+    )
+    public_key = private_key.public_key()
+
+    # Экспортируем ключи для удобного использования
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+
+    return public_pem, private_pem
+
+# Шифрование данных с использованием публичного ключа
+def encrypt(public_key_pem, data):
+    # Преобразуем сложный объект в строку JSON
+    serialized_data = json.dumps(data)
+
+    # Загружаем публичный ключ
+    public_key = serialization.load_pem_public_key(public_key_pem)
+
+    # Шифруем данные
+    encrypted_data = public_key.encrypt(
+        serialized_data.encode('utf-8'),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+
+    # Кодируем зашифрованные данные в base64 для удобной передачи
+    return base64.b64encode(encrypted_data).decode('utf-8')
+
+# Дешифрование данных с использованием приватного ключа
+def decrypt(private_key_pem, encrypted_data):
+    # Декодируем зашифрованные данные из base64
+    encrypted_data = base64.b64decode(encrypted_data)
+
+    # Загружаем приватный ключ
+    private_key = serialization.load_pem_private_key(private_key_pem, password=None)
+
+    # Дешифруем данные
+    decrypted_data = private_key.decrypt(
+        encrypted_data,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+
+    # Преобразуем строку обратно в объект JSON
+    return json.loads(decrypted_data.decode('utf-8'))
+
+public_key, private_key = generate_keypair()
+
+@csrf_exempt
+def encrypt_view(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            message = data.get('message', '')
+            if message:
+                encrypted_message = encrypt(public_key, message)
+                return JsonResponse({'encrypted_message': encrypted_message}, status=200)
+            else:
+                return JsonResponse({'error': 'No message provided'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+@csrf_exempt
+def decrypt_view(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            ciphertext = data.get('message', [])
+            if ciphertext:
+                decrypted_message = decrypt(private_key, ciphertext)
+                return JsonResponse({'decrypted_message': decrypted_message}, status=200)
+            else:
+                return JsonResponse({'error': 'No ciphertext provided'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)

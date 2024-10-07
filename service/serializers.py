@@ -94,7 +94,7 @@ class ReminderSerializer(serializers.ModelSerializer):
 class IntegrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Integration
-        fields = ['id', 'token', 'created_at', 'updated_at', 'user','api']
+        fields = ['id', 'token', 'created_at', 'updated_at', 'user','api','companySpot']
 
 
 class PaymentSerializer(serializers.ModelSerializer):
